@@ -1,2 +1,2 @@
 [workspace]
-members = ["hello-wasm","wasm-bindgen-advance"]
+members = ["hello-wasm-bindgen", "wasm-bindgen-advance"]

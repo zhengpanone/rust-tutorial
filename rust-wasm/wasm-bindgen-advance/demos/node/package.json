@@ -1,0 +1,12 @@
+{
+  "name": "wasm-bindgen-advance",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.mjs",
+  "type": "module",
+  "scripts": {
+    "start": "node index.mjs"
+  },
+  "author": "",
+  "license": "ISC"
+}
