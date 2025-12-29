@@ -1,0 +1,123 @@
+// proto/proto/product.proto
+syntax = "proto3";
+
+package product;
+
+import "common/common.proto";  // 导入公共定义
+
+// 产品服务
+service ProductService {
+  rpc CreateProduct(CreateProductRequest) returns (ProductResponse) {}
+  rpc GetProduct(GetProductRequest) returns (ProductResponse) {}
+  rpc UpdateProduct(UpdateProductRequest) returns (ProductResponse) {}
+  rpc DeleteProduct(DeleteProductRequest) returns (common.CommonResponse) {}  // 使用公共响应
+  rpc ListProducts(ListProductsRequest) returns (stream ProductResponse) {}
+  rpc SearchProducts(SearchProductsRequest) returns (stream ProductResponse) {}
+}
+
+// 产品分类
+enum ProductCategory {
+  ELECTRONICS = 0;
+  CLOTHING = 1;
+  BOOKS = 2;
+  HOME = 3;
+  SPORTS = 4;
+  OTHER = 5;
+}
+
+// 产品状态
+enum ProductStatus {
+  DRAFT = 0;
+  PUBLISHED = 1;
+  OUT_OF_STOCK = 2;
+  DISCONTINUED = 3;
+}
+
+// 产品信息
+message Product {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  ProductCategory category = 4;
+  double price = 5;
+  int32 stock = 6;
+  ProductStatus status = 7;
+  common.Status common_status = 8;  // 使用公共状态
+  map<string, string> attributes = 9;
+  repeated string tags = 10;
+  string created_by = 11;  // 用户ID
+  int64 created_at = 12;
+  int64 updated_at = 13;
+  repeated ProductImage images = 14;
+}
+
+// 产品图片
+message ProductImage {
+  string id = 1;
+  string url = 2;
+  string alt_text = 3;
+  int32 order = 4;
+}
+
+// 创建产品请求
+message CreateProductRequest {
+  string name = 1;
+  string description = 2;
+  ProductCategory category = 3;
+  double price = 4;
+  int32 initial_stock = 5;
+  map<string, string> attributes = 6;
+  repeated string tags = 7;
+  repeated ProductImage images = 8;
+}
+
+// 获取产品请求
+message GetProductRequest {
+  string product_id = 1;
+}
+
+// 产品响应
+message ProductResponse {
+  bool success = 1;
+  string message = 2;
+  Product product = 3;
+}
+
+// 更新产品请求
+message UpdateProductRequest {
+  string product_id = 1;
+  optional string name = 2;
+  optional string description = 3;
+  optional ProductCategory category = 4;
+  optional double price = 5;
+  optional int32 stock = 6;
+  optional ProductStatus status = 7;
+  map<string, string> attributes = 8;
+  repeated string tags = 9;
+  repeated ProductImage images = 10;
+}
+
+// 删除产品请求
+message DeleteProductRequest {
+  string product_id = 1;
+}
+
+// 列出产品请求
+message ListProductsRequest {
+  common.PageRequest page = 1;  // 使用公共分页
+  optional ProductCategory category = 2;
+  optional ProductStatus status = 3;
+  optional double min_price = 4;
+  optional double max_price = 5;
+  optional common.TimeRange created_range = 6;  // 使用公共时间范围
+  repeated string tags = 7;
+}
+
+// 搜索产品请求
+message SearchProductsRequest {
+  string query = 1;
+  common.PageRequest page = 2;  // 使用公共分页
+  optional ProductCategory category = 3;
+  optional double min_price = 4;
+  optional double max_price = 5;
+}

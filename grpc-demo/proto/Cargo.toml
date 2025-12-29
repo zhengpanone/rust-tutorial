@@ -1,0 +1,27 @@
+[package]
+name = "proto"
+version = "0.1.0"
+edition = "2024"
+build = "build.rs"
+
+[lib]
+name="proto" # 明确指定库名
+path="src/lib.rs" # 明确指定库路径
+
+[dependencies]
+prost = "0.14.1"
+prost-types = "0.14.1"
+tonic = "0.14.1"
+tonic-prost = "0.14.1"
+
+
+
+
+# 构建依赖
+[build-dependencies]
+tonic-prost-build = "0.14.1"
+
+[features]
+default=[]
+server=[]
+client=[]

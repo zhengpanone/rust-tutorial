@@ -1,0 +1,35 @@
+// proto/proto/hello.proto
+syntax="proto3";
+
+package hello;
+
+import "common/common.proto";
+import "google/protobuf/timestamp.proto";
+
+// 服务定义
+service GreeterService{
+  // 简单RPC
+  rpc SayHello(HelloRequest) returns (HelloReply){}
+
+  // 服务端流式 RPC
+  rpc LotOfReplies (stream HelloRequest) returns (HelloReply){}
+
+  // 客户端流式 RPC
+  rpc LotOfGreetings(stream HelloRequest) returns (HelloReply){}
+
+  // 双向流式 RPC
+  rpc BidHello(stream HelloRequest) returns (HelloReply){}
+}
+
+// 请求消息
+message HelloRequest{
+  string name=1;
+  optional int32 age=2;
+  repeated string tags =3;
+}
+// 响应消息
+message HelloReply{
+  string message=1;
+  google.protobuf.Timestamp timestamp = 2;
+  common.Status status=3;
+}
