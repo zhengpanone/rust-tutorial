@@ -1,8 +1,11 @@
 use crate::error::UserClientError;
-use crate::interceptor::ClientInterceptor;
+use crate::interceptor::client_interceptor::ClientInterceptor;
 use proto::user::user_service_grpc_client::UserServiceGrpcClient;
 use proto::user::{GetUserRequest, UserResponse};
+use std::fmt::Debug;
+use std::sync::Arc;
 use std::time::Duration;
+use tokio::sync::Semaphore;
 use tonic::codegen::InterceptedService;
 use tonic::transport::{Channel, Endpoint};
 use tracing::debug;
@@ -11,6 +14,9 @@ use tracing_attributes::instrument;
 #[derive(Clone)]
 pub struct UserClient {
     inner: UserServiceGrpcClient<InterceptedService<Channel, ClientInterceptor>>,
+    max_concurrency: usize,
+    semaphore: Arc<tokio::sync::Semaphore>,
+    max_retry: usize,
 }
 
 impl UserClient {
@@ -40,8 +46,15 @@ impl UserClient {
     /// 从已有 Channel 构建（高级用法）
     pub fn from_channel(channel: Channel) -> Self {
         let interceptor = ClientInterceptor::new();
+        let max_concurrency = 10; // 默认最大并发，可改为 Builder 参数
+        let semaphore = Arc::new(tokio::sync::Semaphore::new(max_concurrency));
+        let max_retry = 3; // 默认重试次数
+
         Self {
             inner: UserServiceGrpcClient::with_interceptor(channel, interceptor),
+            max_concurrency,
+            semaphore,
+            max_retry,
         }
     }
 
@@ -51,12 +64,52 @@ impl UserClient {
     /// tracing-attributes：提供宏属性 #[instrument]，可以直接加在函数上
     /// skip(self) 如果函数参数里有不想打印或不可打印的类型（比如 &self 或 &mut self），可以用 skip(...)
     #[instrument(skip(self))]
-    pub async fn get_user(&mut self, id: String) -> Result<UserResponse, UserClientError> {
-        let request = GetUserRequest { id };
-        debug!("get user request {:?}", request);
-        let response = self.inner.get_user(request).await?;
+    pub async fn get_user(
+        &mut self,
+        id: impl Into<String> + Debug,
+    ) -> Result<UserResponse, UserClientError> {
+        let _permit = self.semaphore.acquire().await.unwrap(); // 并发限流
+        let id = id.into();
+        let mut attempt = 0;
 
-        Ok(response.into_inner())
+        loop {
+            attempt += 1;
+            let request = GetUserRequest { id: id.clone() };
+            // Tracing span
+            // 用了 #[instrument]，就不需要再手动创建 span 了。
+            // let span = tracing::info_span!("get_user", user_id = %request.id);
+            // let _enter = span.enter();
+            debug!(attempt, "尝试获取用户");
+            // 记录到 span 的 field 中
+            tracing::Span::current().record("user_id", &tracing::field::display(&id));
+
+            let result = self.inner.clone().get_user(request).await;
+            match result {
+                Ok(resp) => {
+                    // Metrics: 成功
+                    let _ = metrics::counter!("user_client_requests_total",  "method" => "GetUser","status"=>"ok")
+                        .increment(1);
+                    tracing::info!("成功获取用户");
+                    return Ok(resp.into_inner());
+                }
+                Err(err) => {
+                    // Metrics: 失败
+                    let _ = metrics::counter!("user_client_requests_total", "method" => "GetUser","status"=>"error")
+                        .increment(1);
+                    tracing::warn!(error = ?err, attempt, "获取用户失败");
+
+                    if attempt >= self.max_retry {
+                        tracing::error!("达到最大重试次数: {}", attempt);
+                        return Err(err.into());
+                    }
+                    // Retry backoff
+                    let backoff =
+                        Duration::from_millis(50u64.saturating_mul(2u64.pow(attempt as u32)));
+                    tracing::debug!(?backoff, "等待后重试");
+                    tokio::time::sleep(backoff).await;
+                }
+            }
+        }
     }
 }
 
@@ -68,6 +121,8 @@ pub struct UserClientBuilder {
     tcp_keepalive: Option<Duration>,
     enable_tracing: bool,
     interceptor: Option<ClientInterceptor>,
+    max_concurrency: Option<usize>,
+    max_retry: Option<usize>,
 }
 impl UserClientBuilder {
     pub fn new() -> Self {
@@ -98,6 +153,14 @@ impl UserClientBuilder {
         self.interceptor = Some(interceptor);
         self
     }
+    pub fn max_concurrency(mut self, max: usize) -> Self {
+        self.max_concurrency = Some(max);
+        self
+    }
+    pub fn max_retry(mut self, retry: usize) -> Self {
+        self.max_retry = Some(retry);
+        self
+    }
 
     pub async fn build(self) -> Result<UserClient, UserClientError> {
         let endpoint = self.endpoint.ok_or(UserClientError::MissingEndpoint)?;
@@ -117,21 +180,35 @@ impl UserClientBuilder {
         if self.enable_tracing {
             tracing::info!("UserClient tracing enabled");
         }
+        let max_concurrency = self.max_concurrency.unwrap_or(10);
+        let semaphore = Arc::new(Semaphore::new(max_concurrency));
+        let max_retry = self.max_retry.unwrap_or(3);
         // 构建 Channel
         let channel = ep.connect().await?;
         // 拦截器
-        let interceptor = self.interceptor.unwrap_or_else(ClientInterceptor::new);
+        let interceptor = self.interceptor.unwrap_or_else(||{
+            if self.enable_tracing{
+                ClientInterceptor::with_tracing()
+            }else{
+                ClientInterceptor::new()
+            }
+        });
         // 构建客户端
         let inner = UserServiceGrpcClient::with_interceptor(channel, interceptor);
 
-        Ok(UserClient { inner })
+        Ok(UserClient {
+            inner,
+            max_concurrency,
+            semaphore,
+            max_retry,
+        })
     }
 }
 
 #[cfg(test)]
 mod test {
     use crate::client::{UserClient, UserClientBuilder};
-    use crate::interceptor::ClientInterceptor;
+    use crate::interceptor::client_interceptor::ClientInterceptor;
     use proto::user::GetUserRequest;
     use proto::user::user_service_grpc_client::UserServiceGrpcClient;
     use std::time::Duration;

@@ -1,4 +1,4 @@
-use crate::config::database::DatabaseConfig;
+use crate::config::database::{DatabaseConfig, RedisConfig};
 use anyhow::{Context, Error};
 use serde::Deserialize;
 use std::env;
@@ -13,11 +13,11 @@ const DEFAULT_MAX_CONNECTIONS: u32 = 5;
 #[derive(Debug, Clone, Deserialize)]
 pub struct Config {
     pub database: DatabaseConfig,
+    pub redis: RedisConfig,
 }
 
 impl Config {
     pub fn from_env() -> Result<Self, Error> {
-
         let max_connections: u32 = env::var(ENV_DATABASE_MAX_CONNECTIONS)
             .unwrap_or_else(|_| DEFAULT_MAX_CONNECTIONS.to_string())
             .parse::<u32>()
@@ -32,6 +32,11 @@ impl Config {
             url: env::var(ENV_DATABASE_URL).context("DATABASE_URL must be set")?,
             max_connections,
         };
-        Ok(Config { database })
+
+        let redis = RedisConfig {
+            url: env::var("REDIS_URL").context("REDIS_URL must be set")?,
+            ..Default::default()
+        };
+        Ok(Config { database, redis })
     }
 }

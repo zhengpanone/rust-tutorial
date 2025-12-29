@@ -1,14 +1,12 @@
-use std::time::{SystemTime, UNIX_EPOCH};
-use prost_types::Timestamp;
 use proto::hello::greeter_service_server::GreeterService;
 use proto::hello::{HelloReply, HelloRequest};
 use tonic::{Request, Response, Status, Streaming};
 use tracing::info;
 
 #[derive(Default)]
-pub struct HelloGrpcService;
+pub struct GrpcHelloService;
 #[tonic::async_trait]
-impl GreeterService for HelloGrpcService {
+impl GreeterService for GrpcHelloService {
     // 简单 RPC
     async fn say_hello(
         &self,

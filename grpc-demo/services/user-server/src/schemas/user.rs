@@ -1,12 +1,42 @@
 use crate::entity::user_entity::UserEntity;
+use crate::errors::AppError;
+use chrono::Utc;
 use proto::common::Status;
 use proto::user::UserResponse;
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 #[derive(Deserialize, Serialize)]
 pub struct UserDTO {
     pub id: String,
     pub name: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct RegisterDTO {
+    username: String,
+    password: String,
+    email: String,
+}
+
+impl TryFrom<&RegisterDTO> for UserEntity {
+    type Error = AppError;
+
+    fn try_from(request: &RegisterDTO) -> Result<Self, Self::Error> {
+        let now = Utc::now();
+        Ok(Self {
+            id: Uuid::new_v4().to_string(),
+            username: request.username.clone(),
+            password_hash: request.password.clone(),
+            email: request.email.clone(),
+            full_name: "".to_string(),
+            phone_number: "".to_string(),
+            role: 0,
+            created_at: now,
+            updated_at: now,
+            last_login_at: None,
+        })
+    }
 }
 
 #[derive(Serialize)]

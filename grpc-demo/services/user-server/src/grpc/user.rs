@@ -1,10 +1,11 @@
+use std::sync::Arc;
 // grpc/user_handler
 use prost_types::Timestamp;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::service::user_service::UserService;
 use proto::common;
-use proto::user::user_service_grpc_server::{UserServiceGrpc};
+use proto::user::user_service_grpc_server::UserServiceGrpc;
 use proto::user::{
     CreateUserRequest, DeleteUserRequest, DeleteUserResponse, GetUserRequest, ListUserRequest,
     LoginRequest, LoginResponse, RegisterRequest, RegisterResponse, UpdateUserRequest, User,
@@ -24,10 +25,10 @@ fn now_timestamp() -> Timestamp {
 
 // gRPC adapter
 pub struct GrpcUserService {
-    service: UserService,
+    service: Arc<UserService>,
 }
 impl GrpcUserService {
-    pub fn new(service: UserService) -> Self {
+    pub fn new(service: Arc<UserService>) -> Self {
         Self { service }
     }
 }

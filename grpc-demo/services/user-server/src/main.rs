@@ -1,11 +1,11 @@
+use crate::grpc::hello::GrpcHelloService;
 use crate::grpc::user::GrpcUserService;
-use crate::router::crate_router;
+use crate::router::create_router;
 use crate::service::user_service::UserService;
-use crate::state::AppState;
+use crate::state::{App, AppState};
 use anyhow::Context;
-use dotenv::dotenv;
 use proto::hello::greeter_service_server::GreeterServiceServer;
-use proto::user::user_service_grpc_server::{UserServiceGrpc, UserServiceGrpcServer};
+use proto::user::user_service_grpc_server::UserServiceGrpcServer;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
@@ -18,14 +18,19 @@ use tracing::{error, info};
 
 mod config;
 mod db;
-mod entity;
+mod domain;
+pub mod entity;
+pub mod enums;
+mod errors;
 mod grpc;
-mod http;
-mod repository;
+mod handler;
+mod init;
+pub mod repository;
 mod router;
 mod schemas;
 mod service;
 mod state;
+mod utils;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -36,16 +41,23 @@ async fn main() -> anyhow::Result<()> {
     let config = config::Config::from_env().expect("Failed to load config");
 
     // 初始化日志
-    tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::INFO)
-        .init();
+    init::init_logger();
 
-    let state = Arc::new(AppState::new(config.clone()).await?);
+    // let state = Arc::new(AppState::new(config.clone()).await?);
+    let app = App::new(config.clone()).await?;
+    let state = app.state.clone();
 
-    let app = crate_router(state.clone());
+    let router = create_router(state.clone());
+
+    let http_port = std::env::var("HTTP_PORT")
+        .unwrap_or_else(|_| "18080".to_string())
+        .parse::<u16>()
+        .unwrap_or(18080);
 
     let grpc_addr: SocketAddr = "0.0.0.0:50051".parse()?;
-    let http_addr: SocketAddr = "0.0.0.0:8080".parse()?;
+    let http_addr: SocketAddr = format!("0.0.0.0:{}", http_port)
+        .parse()
+        .expect("Failed to parse listen address");
 
     // 健康检查
     let (health_reporter, health_service) = health_reporter();
@@ -55,7 +67,7 @@ async fn main() -> anyhow::Result<()> {
         .set_serving::<UserServiceGrpcServer<GrpcUserService>>()
         .await;
     health_reporter
-        .set_serving::<GreeterServiceServer<grpc::hello::HelloGrpcService>>()
+        .set_serving::<GreeterServiceServer<grpc::hello::GrpcHelloService>>()
         .await;
 
     // Reflection
@@ -64,9 +76,8 @@ async fn main() -> anyhow::Result<()> {
         .build_v1()?;
 
     // 创建 gRPC 服务
-    let user_service = UserService::new(state.clone());
-    let grpc_user_service = GrpcUserService::new(user_service);
-    let greeter_service = crate::grpc::hello::HelloGrpcService::default();
+    let grpc_user_service = app.grpc_user_service();
+    let grpc_hello_service = app.grpc_hello_service();
 
     // 启动 gRPC 服务
     let grpc_server = tokio::spawn(async move {
@@ -76,7 +87,7 @@ async fn main() -> anyhow::Result<()> {
             .add_service(health_service) // 注册健康检查
             .add_service(reflection_service)
             .add_service(UserServiceGrpcServer::new(grpc_user_service))
-            .add_service(GreeterServiceServer::new(greeter_service))
+            .add_service(GreeterServiceServer::new(grpc_hello_service))
             .serve_with_shutdown(grpc_addr, shutdown_signal())
             .await
             .context("gRPC server failed")
@@ -88,7 +99,7 @@ async fn main() -> anyhow::Result<()> {
         let listener = TcpListener::bind(http_addr)
             .await
             .context("Failed to bind HTTP address")?;
-        axum::serve(listener, app)
+        axum::serve(listener, router)
             .await
             .context("HTTP server failed")
     });

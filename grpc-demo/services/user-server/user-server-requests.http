@@ -1,0 +1,15 @@
+### 健康检查
+GET http://localhost:18080/health
+
+### 用户注册 - 中文用户名
+POST http://localhost:18080/users/register
+Content-Type: application/json
+
+{
+  "username": "张三",
+  "password": "password789",
+  "email": "zhangsan@example.com"
+}
+
+### 获取用户信息（用户ID为1）
+GET http://localhost:18080/users/1
