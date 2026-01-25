@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use prost_types::Timestamp;
 use serde::Serialize;
+use utoipa::ToSchema;
 
 #[derive(Serialize)]
 pub struct ApiResponse<T> {
@@ -48,4 +49,9 @@ mod test {
             ProtoTimestamp::from(Utc::now()).into_inner()
         );
     }
+}
+
+#[derive(Serialize, ToSchema)]
+pub struct IdsDTO {
+    pub ids: Vec<String>,
 }

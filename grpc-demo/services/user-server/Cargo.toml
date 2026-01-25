@@ -9,13 +9,15 @@ prost-types = "0.14.1"
 tokio = { workspace = true }
 tonic = "0.14.2"
 tracing = { workspace = true }
-tracing-subscriber = { workspace = true, features = ["env-filter","json"] }
+tracing-subscriber = { workspace = true, features = ["env-filter", "json"] }
 tonic-health = "0.14.2"
 tonic-reflection = "0.14.2"
-sqlx = { workspace = true, features = ["runtime-tokio",
+sqlx = { workspace = true, features = [
+    "runtime-tokio",
     "postgres",
     "chrono",
-    "uuid"] }
+    "uuid",
+] }
 uuid = { version = "1.20.0", features = ["v4", "serde"] }
 futures = "0.3.31"
 async-stream = "0.3.6"
@@ -28,9 +30,17 @@ anyhow = { workspace = true }
 tower = "0.5.2"
 dotenv = "0.15.0"
 redis = { version = "1.0.2", features = ["tokio-comp"] }
-deadpool-redis = "0.22.1"# 连接池
+deadpool-redis = "0.22.1" # 连接池
 redis-async = "0.18.0"
 bcrypt = "0.18.0" # 异步支持
+
+# API Documentation
+utoipa = { version = "5.4.0", features = ["axum_extras", "chrono", "uuid"] }
+utoipa-swagger-ui = { version = "9.0.2", features = ["axum"] }
+utoipa-axum = { version = "0.2.0" }
+utoipa-redoc = { version = "6.0.0", features = ["axum"] }
+utoipa-rapidoc = { version = "6.0.0", features = ["axum"] }
+utoipa-scalar = { version = "0.3.0", features = ["axum"] }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["full", "rt-multi-thread", "macros"] }
