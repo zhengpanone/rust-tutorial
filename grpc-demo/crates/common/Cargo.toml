@@ -8,3 +8,8 @@ name = "common"
 path = "src/lib.rs"
 
 [dependencies]
+axum = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+utoipa = { workspace = true }
+chrono = { workspace = true, features = ["serde"] }
