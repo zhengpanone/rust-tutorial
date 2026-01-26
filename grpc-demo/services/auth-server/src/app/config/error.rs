@@ -142,7 +142,7 @@ impl fmt::Display for ConfigErrorSeverity {
 impl From<RawConfigError> for ConfigError {
     fn from(error: RawConfigError) -> Self {
         match error {
-            RawConfigError::FileParse { uri, cause } => {
+            RawConfigError::FileParse { cause, uri } => {
                 let msg = if let Some(uri) = uri {
                     format!("文件 {} 解析失败: {}", uri, cause)
                 } else {
@@ -156,9 +156,6 @@ impl From<RawConfigError> for ConfigError {
             RawConfigError::Foreign(_) => ConfigError::Unknown(error.to_string()),
             // 添加处理新增的变体
             RawConfigError::Frozen => ConfigError::Unknown("配置已被冻结，无法修改".to_string()),
-            RawConfigError::PathParse(msg) => {
-                ConfigError::ParseError(format!("路径解析失败: {:?}", msg))
-            }
             // 处理未来可能新增的变体
             // 抑制不可达模式警告
             #[allow(unreachable_patterns)]

@@ -1,22 +1,24 @@
 // src/app/config/validator.rs
+use super::constants::*;
+use super::error::ConfigError;
+use crate::app::config::config::AppConfig;
 use std::path::Path;
 use url::Url;
 use validator::Validate;
-
-use super::constants::*;
-use super::error::ConfigError;
 
 /// 配置验证器
 pub struct ConfigValidator;
 
 impl ConfigValidator {
     /// 验证应用配置
-    pub fn validate(config: &super::AppConfig) -> Result<(), ConfigError> {
-        // 基本验证
-        config
-            .validate()
-            .map_err(|e| ConfigError::validation_error(e.to_string()))?;
-
+    ///
+    /// 执行业务逻辑验证，包括：
+    /// - 环境验证
+    /// - 端口验证
+    /// - URL验证
+    /// - 路径验证
+    /// - 生产环境安全检查
+    pub fn validate(config: &AppConfig) -> Result<(), ConfigError> {
         // 环境验证
         Self::validate_environment(&config.environment)?;
 
@@ -24,7 +26,7 @@ impl ConfigValidator {
         Self::validate_ports(config)?;
 
         // URL验证
-        Self::validate_urls(config)?;
+        Self::validate_urls(config, &config.environment)?;
 
         // 路径验证
         Self::validate_paths(config)?;
@@ -53,7 +55,7 @@ impl ConfigValidator {
     }
 
     /// 验证端口
-    fn validate_ports(config: &super::AppConfig) -> Result<(), ConfigError> {
+    fn validate_ports(config: &AppConfig) -> Result<(), ConfigError> {
         // 检查HTTP端口是否在有效范围内
         if config.server.enabled {
             Self::validate_port_range(config.server.port, "server.port")?;
@@ -117,9 +119,9 @@ impl ConfigValidator {
     }
 
     /// 验证URL
-    fn validate_urls(config: &super::AppConfig) -> Result<(), ConfigError> {
+    fn validate_urls(config: &AppConfig, environment: &str) -> Result<(), ConfigError> {
         // 验证数据库URL
-        Self::validate_database_url(&config.database.url)?;
+        Self::validate_database_url(&config.database.url, environment)?;
 
         // 验证Redis URL
         if let Some(redis) = &config.redis {
@@ -137,7 +139,7 @@ impl ConfigValidator {
     }
 
     /// 验证数据库URL
-    fn validate_database_url(url: &str) -> Result<(), ConfigError> {
+    fn validate_database_url(url: &str, environment: &str) -> Result<(), ConfigError> {
         if url.is_empty() {
             return Err(ConfigError::missing_field("database.url"));
         }
@@ -150,7 +152,7 @@ impl ConfigValidator {
         }
 
         // 检查是否为本地数据库
-        if config.is_production() && url.contains("localhost") {
+        if environment == "production" && url.contains("localhost") {
             tracing::warn!("Using localhost database in production environment");
         }
 
@@ -188,7 +190,7 @@ impl ConfigValidator {
     }
 
     /// 验证路径
-    fn validate_paths(config: &super::AppConfig) -> Result<(), ConfigError> {
+    fn validate_paths(config: &AppConfig) -> Result<(), ConfigError> {
         // 验证日志目录
         if config.logging.enable_file_logging {
             Self::validate_directory(&config.logging.log_dir, "logging.log_dir")?;
@@ -251,7 +253,7 @@ impl ConfigValidator {
     }
 
     /// 验证生产环境安全性
-    fn validate_production_safety(config: &super::AppConfig) -> Result<(), ConfigError> {
+    fn validate_production_safety(config: &AppConfig) -> Result<(), ConfigError> {
         let mut errors = Vec::new();
 
         // 检查JWT密钥
