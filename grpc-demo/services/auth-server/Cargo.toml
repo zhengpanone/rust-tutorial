@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 proto = { path = "../../proto" }
-prost-types = "0.14.1"
+prost-types ={ workspace = true }
 tokio = { workspace = true }
 tonic = "0.14.2"
 tracing = { workspace = true }
@@ -22,8 +22,8 @@ uuid = { version = "1.20.0", features = ["v4", "serde"] }
 futures = "0.3.31"
 async-stream = "0.3.6"
 serde = { version = "1.0.228", features = ["derive"] }
-serde_json = "1.0.148"
-chrono = { version = "0.4.35", features = ["serde"] }
+serde_json = "1.0.149"
+chrono = { version = "0.4.43", features = ["serde"] }
 axum = { workspace = true }
 thiserror = { workspace = true }
 anyhow = { workspace = true }
@@ -45,8 +45,8 @@ utoipa-rapidoc = { version = "6.0.0", features = ["axum"] }
 utoipa-scalar = { version = "0.3.0", features = ["axum"] }
 
 common = { path = "../../crates/common" }
-async-trait = "0.1"
-config = "0.13"
+async-trait = "0.1.89"
+config = "0.15.19"
 serde_yaml = "0.9.34"
 toml = "0.9.11"
 url = "2.5.8"

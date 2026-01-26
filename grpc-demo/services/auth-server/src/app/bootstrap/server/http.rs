@@ -4,12 +4,13 @@ use axum::Router;
 pub async fn start_http_server() {}
 
 pub async fn build_router() {
-    let mut router = Router::new();
+    // let mut router = Router::new();
     // 生成 OpenAPI 文档实例
     // let api = ApiDoc::openapi();
 
 
-    let public_routes = Router::new()
+    // let public_routes = Router::new();
+
      // Swagger UI
     // .route(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", api.clone()))
         // Redoc
@@ -27,4 +28,6 @@ pub async fn build_router() {
         // .route("/health", get(health_check))
         // .fallback(not_found)
         // .with_state(state.clone())
+
+    todo!()
 }

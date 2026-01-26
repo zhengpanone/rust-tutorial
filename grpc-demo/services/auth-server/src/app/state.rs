@@ -4,6 +4,7 @@
 // use crate::grpc::hello::GrpcHelloService;
 // use crate::grpc::user::GrpcUserService;
 // use crate::services::user_service::UserService;
+use crate::app::config::config::AppConfig;
 use anyhow::{Error, anyhow};
 use deadpool_redis::Pool as RedisPool;
 use sqlx::PgPool;
@@ -12,13 +13,17 @@ use tracing::log::info;
 
 #[derive(Clone)]
 pub struct AppState {
+    // 配置
+    pub config: Arc<AppConfig>,
+
+
     pub db: PgPool,
     pub redis_pool: Option<RedisPool>,
-    pub config: Config,
+
 }
 
 impl AppState {
-    pub async fn new(config: Config) -> Result<Self, Error> {
+    pub async fn new(config: AppConfig) -> Result<Self, Error> {
         // 初始化数据库
         let db_pool = create_pg_pool(&config.database)
             .await
@@ -38,28 +43,28 @@ impl AppState {
         })
     }
 }
-
-#[derive(Clone)]
-pub struct App {
-    pub state: Arc<AppState>,
-    pub user_service: Arc<UserService>,
-    // TODO
-    // role_service: Arc<RoleService>,
-}
-
-impl App {
-    pub async fn new(config: Config) -> Result<Self, Error> {
-        let state = Arc::new(AppState::new(config).await?);
-        Ok(Self {
-            state: state.clone(),
-            user_service: Arc::new(UserService::new(state.clone())),
-        })
-    }
-
-    pub fn grpc_user_service(&self) -> GrpcUserService {
-        GrpcUserService::new(self.user_service.clone())
-    }
-    pub fn grpc_hello_service(&self) -> GrpcHelloService {
-        GrpcHelloService::default()
-    }
-}
+//
+// #[derive(Clone)]
+// pub struct App {
+//     pub state: Arc<AppState>,
+//     pub user_service: Arc<UserService>,
+//     // TODO
+//     // role_service: Arc<RoleService>,
+// }
+//
+// impl App {
+//     pub async fn new(config: Config) -> Result<Self, Error> {
+//         let state = Arc::new(AppState::new(config).await?);
+//         Ok(Self {
+//             state: state.clone(),
+//             user_service: Arc::new(UserService::new(state.clone())),
+//         })
+//     }
+//
+//     pub fn grpc_user_service(&self) -> GrpcUserService {
+//         GrpcUserService::new(self.user_service.clone())
+//     }
+//     pub fn grpc_hello_service(&self) -> GrpcHelloService {
+//         GrpcHelloService::default()
+//     }
+// }
