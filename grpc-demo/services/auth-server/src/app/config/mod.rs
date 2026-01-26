@@ -8,14 +8,14 @@ pub mod validator;
 
 #[cfg(test)]
 mod tests {
-    use crate::app::config::config::ConfigSummary;
+    use crate::app::config::config::{AppConfig, ConfigSummary};
     use crate::app::config::loader::ConfigLoader;
     use crate::app::config::summary::ConfigSummaryGenerator;
 
     #[test]
     fn test_config_usage() {
         // 加载配置
-        let config = ConfigLoader::load_and_validate().expect("加载配置失败");
+        let config:AppConfig = ConfigLoader::load_and_validate().expect("加载配置失败");
         println!("{}", config.environment);
 
         // 单独加载和验证

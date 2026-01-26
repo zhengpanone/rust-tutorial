@@ -4,6 +4,7 @@
 // use crate::grpc::hello::GrpcHelloService;
 // use crate::grpc::user::GrpcUserService;
 // use crate::services::user_service::UserService;
+use crate::app::bootstrap::server::jwt::JwtService;
 use crate::app::config::config::AppConfig;
 use anyhow::{Error, anyhow};
 use deadpool_redis::Pool as RedisPool;
@@ -16,31 +17,32 @@ pub struct AppState {
     // 配置
     pub config: Arc<AppConfig>,
 
+    pub jwt_service: Arc<JwtService>,
 
     pub db: PgPool,
     pub redis_pool: Option<RedisPool>,
-
 }
 
 impl AppState {
     pub async fn new(config: AppConfig) -> Result<Self, Error> {
-        // 初始化数据库
-        let db_pool = create_pg_pool(&config.database)
-            .await
-            .expect("Failed to connect to DB");
-        info!("Database connection established");
-        // 初始化redis
-        let redis_pool = create_redis_pool(&config.redis)
-            .await
-            .map_err(|e| anyhow!("Failed to connect to Redis: {}", e))?;
-
-        // 运行数据库迁移
-        // sqlx::migrate!("./migrations").run(&db_pool).await?;
-        Ok(Self {
-            db: db_pool,
-            redis_pool,
-            config,
-        })
+        // // 初始化数据库
+        // let db_pool = create_pg_pool(&config.database)
+        //     .await
+        //     .expect("Failed to connect to DB");
+        // info!("Database connection established");
+        // // 初始化redis
+        // let redis_pool = create_redis_pool(&config.redis)
+        //     .await
+        //     .map_err(|e| anyhow!("Failed to connect to Redis: {}", e))?;
+        //
+        // // 运行数据库迁移
+        // // sqlx::migrate!("./migrations").run(&db_pool).await?;
+        // Ok(Self {
+        //     db: db_pool,
+        //     redis_pool,
+        //     config,
+        // })
+        todo!()
     }
 }
 //

@@ -1,6 +1,7 @@
 // src/app/config/config.rs
 use crate::app::config::error::ConfigError;
 use crate::app::config::validator::ConfigValidator;
+use jsonwebtoken::Algorithm;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use validator::Validate;
@@ -30,19 +31,19 @@ impl AppConfig {
     /// 2. 业务逻辑验证：使用 ConfigValidator 验证跨字段逻辑
     pub fn validate(&self) -> Result<(), ConfigError> {
         // 第一阶段： 字段级验证(使用派生宏)
-        self.validate()
+        Validate::validate(self)
             .map_err(|e| ConfigError::validation_error(format!("字段验证失败: {}", e)))?;
         // 第二阶段：业务逻辑验证（使用 ConfigValidator）
         ConfigValidator::validate(self)?;
         Ok(())
     }
     /// 判断是否为开发环境
-    pub fn is_development(&self) -> bool {
-        self.environment == "development"
+    pub fn is_dev(&self) -> bool {
+        self.environment == "dev"
     }
     /// 判断是否为生产环境
-    pub fn is_production(&self) -> bool {
-        self.environment == "production"
+    pub fn is_prod(&self) -> bool {
+        self.environment == "prod"
     }
     /// 判断是否为预发布环境
     pub fn is_staging(&self) -> bool {
@@ -58,7 +59,7 @@ impl AppConfig {
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
 pub struct ServerConfig {
     /// 是否启用
-    pub enabled: bool,
+    pub enable_http: bool,
     /// 主机地址
     #[validate(length(min = 1, message = "主机地址不能为空"))]
     pub host: String,
@@ -192,7 +193,7 @@ pub struct RedisConfig {
 
     /// 连接池大小
     #[validate(range(min = 1, max = 100))]
-    pub pool_size: u32,
+    pub pool_size: usize,
 
     /// 默认TTL（秒）
     pub default_ttl_secs: u64,

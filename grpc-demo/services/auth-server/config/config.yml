@@ -1,0 +1,71 @@
+environment: dev
+server:
+  enable_http: true
+  host: 0.0.0.0
+  port: 8080
+  request_timeout_secs: 10
+  enable_cors: true
+  cors_origins:
+    - http://localhost:3000
+    - http://localhost:8080
+  body_limit: 10
+  enable_health_check: true
+  health_check_port: 8081
+  enable_hybrid: true
+
+database:
+  url: postgres://postgres:postgres@127.0.0.1:15432/gmall
+  max_connections: 10
+  min_connections: 5
+  acquire_timeout_secs: 20
+  idle_timeout_secs: 20
+  max_lifetime_secs: 50
+  run_migrations: false
+  enable_pool_health_check: false
+  health_check_interval_secs: 30
+
+grpc:
+  enabled: true
+  host: 0.0.0.0
+  port: 50051
+  address: 0.0.0.0:50051
+  enable_reflection: true
+  enable_tls: false
+  tls_cert_file: cert.pem
+  tls_key_file: key.pem
+  max_concurrent_streams: 100
+  initial_stream_window_size: 10000000
+  initial_connection_window_size: 10000000
+  tcp_keepalive_seconds: 20
+  tcp_nodelay: true
+  http2_keepalive_interval_seconds: 20
+  http2_keepalive_timeout_seconds: 20
+logging:
+  log_level: info
+  log_dir: /tmp/logs
+  enable_json_format: true
+  enable_file_logging: true
+  enable_console_logging: true
+  retention_days: 7
+security:
+  jwt_secret: aaaaaabbcddsdafewqwefasdf
+  jwt_expiry_minutes: 15
+  refresh_token_expiry_days: 30
+  password_hash_cost: 10
+rate_limit:
+  enabled: true
+  requests_per_minute: 1000
+  burst_size: 30
+  skip_authentication: true
+
+
+
+
+
+
+
+
+
+
+
+

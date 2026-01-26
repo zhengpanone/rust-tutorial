@@ -1,6 +1,6 @@
-mod api;
-mod app;
-mod application;
+pub mod api;
+pub mod app;
+pub mod application;
 // mod config;
 // mod db;
 // mod domain; // 领域层

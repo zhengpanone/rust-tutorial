@@ -4,7 +4,7 @@ use crate::app::config::error::ConfigError;
 use config::{Config, Environment, File, FileFormat};
 use std::env;
 use std::path::Path;
-use tracing::warn;
+use tracing::{debug, warn};
 
 // src/app/config/loader.rs
 /// 配置加载器
@@ -19,7 +19,10 @@ impl ConfigLoader {
     /// 3. 默认配置
 
     pub fn load() -> Result<AppConfig, ConfigError> {
-        let environment = env::var("APP_ENVIRONMENT").unwrap_or_else(|_| "development".to_string());
+        debug!("cwd = {:?}", std::env::current_dir());
+        // 加载环境变量
+        dotenv::from_path(concat!(env!("CARGO_MANIFEST_DIR"), "/.env")).ok();
+        let environment = env::var("APP_ENVIRONMENT").unwrap_or_else(|_| "dev".to_string());
 
         Self::load_with_environment(&environment)
     }
@@ -29,7 +32,8 @@ impl ConfigLoader {
 
         // 1. 加载基础配文件
         let config_file = format!("config/config.{}", Self::detect_config_format()?);
-
+        // let absolute_path = Path::new(&config_file).canonicalize()?;
+        // debug!("config_file = {:?}", absolute_path);
         if Path::new(&config_file).exists() {
             builder = builder.add_source(File::with_name(&config_file))
         } else {
@@ -80,7 +84,7 @@ impl ConfigLoader {
         let mut app_config: AppConfig = config.try_deserialize()?;
         // 设置环境变量
         app_config.environment =
-            env::var("APP_ENVIRONMENT").unwrap_or_else(|_| "development".to_string());
+            env::var("APP_ENVIRONMENT").unwrap_or_else(|_| "dev".to_string());
         Ok(app_config)
     }
     /// 从字符串加载配置
@@ -141,7 +145,7 @@ impl ConfigLoader {
 
     /// 检测配置文件格式
     fn detect_config_format() -> Result<String, ConfigError> {
-        for ext in ["toml", "yaml", "json"] {
+        for ext in ["toml", "yaml", "yml", "json"] {
             let file = format!("config/config.{}", ext);
             if Path::new(&file).exists() {
                 return Ok(ext.to_string());

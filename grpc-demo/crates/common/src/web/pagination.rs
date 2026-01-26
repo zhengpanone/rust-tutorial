@@ -1,4 +1,5 @@
 // src/web/pagination.rs
+use crate::web::response::PaginationLinks;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use utoipa::ToSchema;
@@ -74,6 +75,7 @@ impl<T> PaginatedData<T> {
             has_next: self.has_next,
             previous_page: self.previous_page,
             next_page: self.next_page,
+            links: None,
         }
     }
 }
@@ -107,6 +109,10 @@ pub struct PaginationInfo {
     /// 下一页页码
     #[serde(skip_serializing_if = "Option::is_none")]
     pub next_page: Option<u64>,
+
+    /// 分页链接
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub links: Option<PaginationLinks>,
 }
 
 /// 分页查询参数

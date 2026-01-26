@@ -32,8 +32,8 @@ impl ConfigValidator {
         Self::validate_paths(config)?;
 
         // 生产环境安全检查
-        if config.is_production() {
-            Self::validate_production_safety(config)?;
+        if config.is_prod() {
+            Self::validate_prod_safety(config)?;
         }
 
         Ok(())
@@ -57,7 +57,7 @@ impl ConfigValidator {
     /// 验证端口
     fn validate_ports(config: &AppConfig) -> Result<(), ConfigError> {
         // 检查HTTP端口是否在有效范围内
-        if config.server.enabled {
+        if config.server.enable_http {
             Self::validate_port_range(config.server.port, "server.port")?;
         }
 
@@ -72,7 +72,7 @@ impl ConfigValidator {
         }
 
         // 检查端口冲突
-        if config.server.enabled && config.grpc.enabled {
+        if config.server.enable_http && config.grpc.enabled {
             if config.server.port == config.grpc.port {
                 return Err(ConfigError::validation_error(
                     "HTTP and gRPC ports cannot be the same",
@@ -89,7 +89,7 @@ impl ConfigValidator {
         }
 
         // 检查健康检查端口冲突
-        if config.server.enabled && config.server.enable_health_check {
+        if config.server.enable_http && config.server.enable_health_check {
             if config.server.port == config.server.health_check_port {
                 return Err(ConfigError::validation_error(
                     "HTTP port and health check port cannot be the same",
@@ -253,7 +253,7 @@ impl ConfigValidator {
     }
 
     /// 验证生产环境安全性
-    fn validate_production_safety(config: &AppConfig) -> Result<(), ConfigError> {
+    fn validate_prod_safety(config: &AppConfig) -> Result<(), ConfigError> {
         let mut errors = Vec::new();
 
         // 检查JWT密钥

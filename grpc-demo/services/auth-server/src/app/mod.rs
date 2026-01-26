@@ -1,4 +1,4 @@
-mod bootstrap;
+pub mod bootstrap;
 pub mod config;
-pub mod errors;
+pub mod middleware;
 pub mod state;
