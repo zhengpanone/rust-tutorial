@@ -1,4 +1,10 @@
-pub async fn login() {
+use crate::app::state::AppState;
+use crate::infrastructure::web::dto::auth::request::LoginRequest;
+use axum::Json;
+use axum::extract::State;
+use std::sync::Arc;
+
+pub async fn login(State(state): State<Arc<AppState>>, Json(payload): Json<LoginRequest>) {
     todo!()
 }
 
@@ -22,9 +28,7 @@ pub async fn verify_email() {
     todo!()
 }
 
-pub async fn resend_verification(){
-
-}
+pub async fn resend_verification() {}
 
 pub async fn logout() {
     todo!()

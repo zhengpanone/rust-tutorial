@@ -1,6 +1,7 @@
 pub mod api;
 pub mod app;
 pub mod application;
+pub mod infrastructure;
 // mod config;
 // mod db;
 // mod domain; // 领域层
