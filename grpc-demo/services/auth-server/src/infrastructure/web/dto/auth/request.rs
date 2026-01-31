@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use utoipa::ToSchema;
 use validator::{Validate, ValidationError};
+use validator_ext::must_be_true_validator;
 
 // src/infrastructure/web/dto/auth/requests.rs
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
@@ -30,7 +31,137 @@ pub struct LoginRequest {
     #[validate(length(min = 1, max = 50, message = "设备类型长度必须在1-50个字符之间"))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub device_type: Option<String>,
-    // TODO
+    /// 用户代理
+    #[validate(length(min = 1, max = 500, message = "设备类型长度必须在1-500个字符之间"))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub user_agent: Option<String>,
+
+    /// IP地址
+    #[validate(length(min = 1, max = 45, message = "设备类型长度必须在1-50个字符之间"))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ip_address: Option<String>,
+
+    //// 地理位置
+    #[validate(length(min = 1, max = 100, message = "设备类型长度必须在1-50个字符之间"))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub location: Option<String>,
+
+    /// 验证码
+    #[validate(length(min = 1, max = 10, message = "设备类型长度必须在1-10个字符之间"))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub captcha_code: Option<String>,
+
+    /// 验证码ID
+    #[validate(length(min = 1, max = 100, message = "设备类型长度必须在1-100个字符之间"))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub captcha_id: Option<String>,
+
+    /// 记住我
+    #[serde(default)]
+    pub remember_me: bool,
+
+    /// 多因素认证代码
+    #[validate(length(min = 1, max = 10, message = "MFA长度必须在1-10个字符之间"))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mfa_code: Option<String>,
+    /// 登录方式
+    #[serde(default = "default_login_method")]
+    pub login_method: LoginMethod,
+}
+/// 注册请求
+#[must_be_true_validator]
+#[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
+pub struct RegisterRequest {
+    /// 用户名
+    #[validate(
+        length(min = 3, max = 50, message = "用户名长度必须在3-50个字符之间"),
+        custom(function = "validate_username")
+    )]
+    pub username: String,
+    /// 邮箱
+    #[validate(
+        length(min = 1, max = 100, message = "邮箱长度必须在1-100个字符之间"),
+        email(message = "邮箱格式不正确")
+    )]
+    pub email: String,
+    /// 手机号
+    #[validate(
+        length(min = 1, max = 20, message = "手机号长度不能超过20个字符"),
+        custom(function = "validate_phone")
+    )]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub phone: Option<String>,
+
+    #[validate(
+        length(min = 6, max = 128, message = "密码长度必须在6-128个字符之间"),
+        custom(function = "validate_password_strength")
+    )]
+    pub password: String,
+
+    /// 确认密码
+    #[validate(must_match(other = "password", message = "两次输入的密码不一致"))]
+    pub confirm_password: String,
+
+    #[validate(length(min = 1, max = 100, message = "显示名称长度不能超过100个字符"))]
+    pub display_name: String,
+    /// 头像URL
+    #[validate(
+        length(max = 500, message = "头像URL长度不能超过500个字符"),
+        url(message = "头像URL格式不正确")
+    )]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avatar_url: Option<String>,
+
+    /// 注册来源
+    #[validate(length(max = 50, message = "来源长度不能超过50个字符"))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
+
+    /// 邀请码
+    #[validate(length(max = 50, message = "邀请码长度不能超过50个字符"))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub invitation_code: Option<String>,
+
+    /// 验证码
+    #[validate(length(max = 10, message = "验证码长度不能超过10个字符"))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub captcha_code: Option<String>,
+
+    /// 验证码ID
+    #[validate(length(max = 100, message = "验证码ID长度不能超过100个字符"))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub captcha_id: Option<String>,
+
+    #[validate(must_be_true(message = "必须同意用户协议"))]
+    #[serde(default)]
+    pub accept_terms: bool,
+    pub accept_privacy: bool,
+    pub metadata: Option<serde_json::Value>,
+}
+
+/// 登录方式
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+pub enum LoginMethod {
+    #[serde(rename = "password")]
+    Password,
+    #[serde(rename = "sms")]
+    Sms,
+    #[serde(rename = "social")]
+    Social,
+    #[serde(rename = "mfa")]
+    Mfa,
+    #[serde(rename = "sso")]
+    Sso,
+}
+
+impl Default for LoginMethod {
+    fn default() -> Self {
+        Self::Password
+    }
+}
+
+fn default_login_method() -> LoginMethod {
+    LoginMethod::Password
 }
 
 /// 验证用户标识符
@@ -65,4 +196,135 @@ fn validate_password_format(password: &str) -> Result<(), ValidationError> {
             .with_message(Cow::from("密码不能包含空格")));
     }
     Ok(())
+}
+
+fn validate_username(username: &str) -> Result<(), ValidationError> {
+    static USERNAME_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"^[a-zA-Z0-9_]{3,50}$").unwrap());
+    if !USERNAME_REGEX.is_match(username) {
+        return Err(ValidationError::new("invalid username format")
+            .with_message(Cow::from("无效的用户名格式")));
+    }
+    //检查保留用户名
+    let reserved_name = vec![
+        "admin",
+        "administrator",
+        "root",
+        "system",
+        "support",
+        "help",
+        "info",
+        "contact",
+        "security",
+        "noreply",
+    ];
+
+    if reserved_name.contains(&username.to_lowercase().as_str()) {
+        return Err(ValidationError::new("reserved username")
+            .with_message(Cow::from("该用户名已被保留,请更换用户名")));
+    }
+    Ok(())
+}
+
+fn validate_phone(phone: &str) -> Result<(), ValidationError> {
+    if phone.is_empty() {
+        return Ok(()); // 手机号可选
+    }
+    static PHONE_REGEX: Lazy<Regex> = Lazy::new(|| {
+        // 支持国际格式和国内手机号
+        Regex::new(r"^(?:\+?86)?1[3-9]\d{9}$|^\+[1-9]\d{1,14}$").unwrap()
+    });
+    if !PHONE_REGEX.is_match(phone) {
+        return Err(ValidationError::new("invalid phone format")
+            .with_message(Cow::from("无效的手机号格式")));
+    }
+    Ok(())
+}
+
+fn validate_password_strength(password: &str) -> Result<(), ValidationError> {
+    if password.len() < 6 {
+        return Err(ValidationError::new("password too short").with_message(Cow::from("密码太短")));
+    }
+    if password.len() > 128 {
+        return Err(ValidationError::new("password too long").with_message(Cow::from("密码太长")));
+    }
+
+    // 检查包含的字符类型
+    let has_lowercase = password.chars().any(|c| c.is_ascii_lowercase());
+    let has_uppercase = password.chars().any(|c| c.is_ascii_uppercase());
+    let has_digit = password.chars().any(|c| c.is_ascii_digit());
+    let has_special = password.chars().any(|c| c.is_alphanumeric());
+
+    //密码强度评估
+    let mut strength_score = 0;
+    if has_lowercase {
+        strength_score += 1;
+    }
+    if has_uppercase {
+        strength_score += 1;
+    }
+    if has_digit {
+        strength_score += 1;
+    }
+    if has_special {
+        strength_score += 1;
+    }
+    if password.len() >= 12 {
+        strength_score += 1;
+    }
+    if strength_score < 3 {
+        return Err(
+            ValidationError::new("password too weak").with_message(Cow::from(
+                "密码强度不足，建议包含大小写字母、数字和特殊字符",
+            )),
+        );
+    }
+    let common_passwords = vec![
+        "password",
+        "123456",
+        "12345678",
+        "qwerty",
+        "abc123",
+        "password1",
+        "admin",
+        "welcome",
+        "monkey",
+        "letmein",
+    ];
+    if common_passwords.contains(&password.to_lowercase().as_str()) {
+        return Err(ValidationError::new("common password")
+            .with_message(Cow::from("密码过于简单，请使用更复杂的密码")));
+    }
+    // 检查连续字符
+    if contains_sequence(password) {
+        return Err(
+            ValidationError::new("sequence password").with_message(Cow::from("密码包含连续字符"))
+        );
+    }
+    Ok(())
+}
+
+fn contains_sequence(password: &str) -> bool {
+    if password.len() < 3 {
+        return false;
+    }
+    let chars: Vec<char> = password.chars().collect();
+    for i in 0..chars.len() - 2 {
+        let c1 = chars[i] as u8;
+        let c2 = chars[i + 1] as u8;
+        let c3 = chars[i + 2] as u8;
+        // 检查是否为连续字符
+        if c1 + 1 == c2 && c2 + 1 == c3 {
+            return true;
+        }
+        // 检查是否为连续字符的反向顺序
+        if c1 - 1 == c2 && c2 - 1 == c3 {
+            return true;
+        }
+
+        // 检查相同字符
+        if c1 == c2 && c2 == c3 {
+            return true;
+        }
+    }
+    false
 }
