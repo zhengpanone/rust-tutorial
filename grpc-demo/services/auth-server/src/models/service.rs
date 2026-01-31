@@ -1,5 +1,5 @@
 // 服务表
-// src/models/service.rs
+// src/entities/service.rs
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;

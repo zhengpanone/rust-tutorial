@@ -1,5 +1,7 @@
+use crate::api::http::configure_routes;
 use crate::app::config::config::AppConfig;
 use crate::app::state::AppState;
+use axum::{middleware, Router};
 use common::error::{AppError, AppResult};
 use std::error::Error;
 use std::sync::Arc;
@@ -136,6 +138,28 @@ impl AppBootstrap {
             }
         }
         todo!()
+    }
+
+    fn configure_http_router(&self, state: Arc<AppState>) -> Router {
+        // 1. 配置API路由
+        let mut app = configure_routes();
+
+        // 2. 添加状态
+        app = app.with_state(state.clone());
+        // 3. 添加全局中间件
+        app = self.add_global_middleware(app);
+
+        // 4. 添加OpenAPI文档
+        app = self.add_openapi_docs(app);
+
+        // 5. 添加监控端点
+        app = self.add_monitoring_endpoints(app);
+        app
+    }
+
+    fn add_global_middleware(self, app: Router<Arc<AppState>>) -> Router<Arc<AppState>> {
+        use axum::middleware;
+        app.layer(middleware::from_fn(request_logger))
     }
 
     pub fn state(&self) -> Option<&Arc<AppState>> {

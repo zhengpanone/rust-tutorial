@@ -8,19 +8,34 @@ use crate::app::bootstrap::server::jwt::JwtService;
 use crate::app::config::config::AppConfig;
 use anyhow::{Error, anyhow};
 use deadpool_redis::Pool as RedisPool;
+use lapin::{Channel, Connection as RabbitmqConnection};
 use sqlx::PgPool;
 use std::sync::Arc;
 use tracing::log::info;
+use crate::application::services::auth_app::AuthApp;
+use crate::application::services::user_app::UserApp;
 
 #[derive(Clone)]
 pub struct AppState {
-    // 配置
+    /// 配置
     pub config: Arc<AppConfig>,
-
-    pub jwt_service: Arc<JwtService>,
-
-    pub db: PgPool,
+    /// 数据库池
+    pub db_pool: PgPool,
+    /// Redis连接池
     pub redis_pool: Option<RedisPool>,
+
+    /// RabbitMQ连接
+    pub rabbitmq_connection: Option<Arc<RabbitmqConnection>>,
+    pub rabbitmq_channel: Option<Arc<Channel>>,
+
+    /// 安全服务
+    pub jwt_service: Arc<JwtService>,
+    // pub password_hasher: Arc<PasswordHasher>,
+    // pub password_validator: Arc<PasswordValidator>,
+
+    /// 应用服务
+    pub auth_app: Arc<dyn AuthApp + Send + Sync>,
+    pub user_app: Arc<dyn UserApp + Send + Sync>,
 }
 
 impl AppState {

@@ -132,10 +132,18 @@ pub struct RegisterRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub captcha_id: Option<String>,
 
+    /// 用户协议同意
     #[validate(must_be_true(message = "必须同意用户协议"))]
     #[serde(default)]
     pub accept_terms: bool,
+
+    /// 隐私政策同意
+    #[validate(must_be_true(message = "必须同意隐私政策"))]
+    #[serde(default)]
     pub accept_privacy: bool,
+
+    /// 元数据
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub metadata: Option<serde_json::Value>,
 }
 

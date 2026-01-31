@@ -89,12 +89,19 @@ pub struct JwtUser {
 pub enum UserStatus {
     #[serde(rename = "active")]
     Active,
+
     #[serde(rename = "inactive")]
     Inactive,
+
     #[serde(rename = "suspended")]
     Suspended,
+
     #[serde(rename = "locked")]
     Locked,
+
+    #[serde(rename = "pending")]
+    Pending,
+
     #[serde(rename = "deleted")]
     Deleted,
 }
@@ -106,6 +113,7 @@ impl std::fmt::Display for UserStatus {
             UserStatus::Inactive => write!(f, "inactive"),
             UserStatus::Suspended => write!(f, "suspended"),
             UserStatus::Locked => write!(f, "locked"),
+            UserStatus::Pending => write!(f, "pending"),
             UserStatus::Deleted => write!(f, "deleted"),
         }
     }

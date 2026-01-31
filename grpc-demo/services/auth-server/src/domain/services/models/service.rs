@@ -1,4 +1,4 @@
-// src/domain/services/models/service.rs
+// src/domain/services/entities/service.rs
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
