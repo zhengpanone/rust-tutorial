@@ -5,7 +5,7 @@ members = [
     "proto",
     "services/auth-server",
     "clients/auth-client",
-    "crates/common",
+    "crates/common", "crates/validator-ext",
 ]
 
 [workspace.dependencies]
