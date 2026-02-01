@@ -5,20 +5,21 @@ members = [
     "proto",
     "services/auth-server",
     "clients/auth-client",
-    "crates/common", "crates/validator-ext",
+    "crates/common",
+    "crates/validator-ext",
 ]
 
 [workspace.dependencies]
-tonic = "0.14.2"
-tonic-prost = "0.14.2"
+tonic = "0.14.3"
+tonic-prost = "0.14.3"
 prost = "0.14.1"
 prost-types = "0.14.1"
 tokio = { version = "1.48", features = ["full"] }
 tokio-stream = "0.1"
-tonic-build = "0.14.2"
+tonic-build = "0.14.3"
 prost-build = "0.14.1"
-tonic-health = "0.14.2"
-tonic-reflection = "0.14.2"
+tonic-health = "0.14.3"
+tonic-reflection = "0.14.3"
 sqlx = { version = "0.8.6", features = [
     "runtime-tokio-rustls",
     "postgres",
@@ -34,7 +35,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1", features = ["v4"] }
-thiserror = "2.0.17"
+thiserror = "2.0.18"
 anyhow = "1.0"
 tracing = "0.1"
 tracing-subscriber = "0.3"

@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use common::security::jwt::claim::UserStatus;
+use common::security::jwt::claim::{DeviceInfo, UserStatus};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
@@ -88,25 +88,9 @@ pub struct SessionInfoResponse {
     /// 会话ID
     pub session_id: String,
 
-    /// 设备ID
+    /// 设备信息
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub device_id: Option<String>,
-
-    /// 设备类型
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub device_type: Option<String>,
-
-    /// 用户代理
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub user_agent: Option<String>,
-
-    /// IP地址
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub ip_address: Option<String>,
-
-    /// 地理位置
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub location: Option<String>,
+    pub device_info: Option<DeviceInfo>,
 
     /// 登录时间
     pub login_time: DateTime<Utc>,

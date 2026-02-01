@@ -1,7 +1,7 @@
-use crate::api::http::configure_routes;
+use crate::{api::http::configure_routes, app::middleware::http::logging::request_logger};
 use crate::app::config::config::AppConfig;
 use crate::app::state::AppState;
-use axum::{middleware, Router};
+use axum::{Router, middleware};
 use common::error::{AppError, AppResult};
 use std::error::Error;
 use std::sync::Arc;
@@ -150,10 +150,10 @@ impl AppBootstrap {
         app = self.add_global_middleware(app);
 
         // 4. 添加OpenAPI文档
-        app = self.add_openapi_docs(app);
+        // app = self.add_openapi_docs(app);
 
         // 5. 添加监控端点
-        app = self.add_monitoring_endpoints(app);
+        // app = self.add_monitoring_endpoints(app);
         app
     }
 

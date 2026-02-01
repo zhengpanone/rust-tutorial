@@ -4,9 +4,7 @@ use std::fmt::Formatter;
 // src/web/response/api_response.rs
 use crate::error::AppError;
 use crate::web::pagination::{PaginatedData, PaginationInfo};
-use crate::web::response::api_error::{
-    ApiError, ValidationErrorDetail, convert_validate_errors_to_details,
-};
+use crate::web::response::api_error::{ApiError, convert_validate_errors_to_details};
 use axum::http::HeaderValue;
 use axum::{
     Json,

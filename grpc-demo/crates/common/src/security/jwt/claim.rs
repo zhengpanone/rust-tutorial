@@ -6,8 +6,9 @@ use utoipa::ToSchema;
 use validator::Validate;
 
 /// JWT令牌类型
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Copy, PartialEq, Default, Eq, Serialize, Deserialize, ToSchema)]
 pub enum TokenType {
+    #[default]
     #[serde(rename = "access")]
     Access,
     #[serde(rename = "refresh")]
@@ -85,8 +86,9 @@ pub struct JwtUser {
 }
 
 /// 用户状态
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Copy, PartialEq, Default, Eq, Serialize, Deserialize, ToSchema)]
 pub enum UserStatus {
+    #[default] // 标记默认变体
     #[serde(rename = "active")]
     Active,
 
@@ -118,21 +120,39 @@ impl std::fmt::Display for UserStatus {
         }
     }
 }
+
+/// 设备信息
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct DeviceInfo {
+    /// 设备ID
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub device_id: Option<String>,
+
+    /// 设备类型
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub device_type: Option<String>,
+
+    /// 用户代理
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub user_agent: Option<String>,
+
+    /// IP地址
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ip_address: Option<String>,
+
+    /// 地理位置
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub location: Option<String>,
+}
+
 /// JWT 会话信息
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
 pub struct JwtSession {
     /// 会话ID
     pub id: String,
-    /// 设备ID
-    pub device_id: Option<String>,
-    /// 设备类型
-    pub device_type: Option<String>,
-    /// 用户代理
-    pub user_agent: Option<String>,
-    /// IP地址
-    pub ip_addr: Option<String>,
-    /// 地理位置
-    pub location: Option<String>,
+    /// 设备信息
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub device_info: Option<DeviceInfo>,
     /// 是否首次登录
     pub is_first_login: bool,
     /// 登录时间
