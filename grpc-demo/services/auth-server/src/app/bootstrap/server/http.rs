@@ -6,11 +6,7 @@ use axum::routing::post;
 use std::net::{SocketAddr, TcpListener};
 use std::sync::Arc;
 use tracing::info;
-use utoipa::OpenApi;
-use utoipa_rapidoc::RapiDoc;
-use utoipa_redoc::{Redoc, Servable};
-use utoipa_scalar::{Scalar, Servable as ScalarServable};
-use utoipa_swagger_ui::SwaggerUi;
+
 
 // src/app/bootstrap/server/http.rs
 pub async fn start_http_server(state: AppState, server_config: &ServerConfig) {
@@ -37,8 +33,7 @@ pub async fn start_http_server(state: AppState, server_config: &ServerConfig) {
 
 /// 构建路由器
 pub async fn build_router(state: AppState, server_config: &ServerConfig) -> Router {
-    // 生成 OpenAPI 文档实例
-    // let api = RapiDoc::openapi();
+
 
     // let mut router = Router::new();
 

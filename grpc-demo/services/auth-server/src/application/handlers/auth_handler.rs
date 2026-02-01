@@ -45,20 +45,23 @@ pub async fn register(
 
     // 生成验证令牌
     let verification_token = state.auth_app.generate_verification_token(&user.id).await?;
-
-    // 发送验证邮件
-    tokio::spawn(async move {
-        if let Err(e) = send_verification_email(&user.email, &verification_token).await {
-            error!("发送验证邮件失败: {}", e);
-        }
-    });
-
+    
     // 先提取需要的信息，避免移动后无法访问
+    let user_email = user.email.clone();
     let email_verified = user.email_verified;
     let phone_verified = user.phone_verified;
     let phone_provided = user.phone.is_some();
     let display_name = user.display_name.clone();
     let created_at = user.created_at;
+
+    // 发送验证邮件
+    tokio::spawn(async move {
+        if let Err(e) = send_verification_email(&user_email, &verification_token).await {
+            error!("发送验证邮件失败: {}", e);
+        }
+    });
+
+
     let response = RegisterResponse {
         user: user.into(),
         requires_email_verification: !email_verified,

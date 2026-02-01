@@ -1,6 +1,6 @@
 use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::types::uuid;
+use sqlx::Type;
 use std::collections::HashMap;
 use utoipa::ToSchema;
 use validator::Validate;
@@ -86,7 +86,9 @@ pub struct JwtUser {
 }
 
 /// 用户状态
-#[derive(Debug, Clone, Copy, PartialEq, Default, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Copy, PartialEq, Default, Eq, Serialize, Deserialize, Type, ToSchema)]
+#[sqlx(type_name = "user_status_enum", rename_all = "lowercase")] // 对应 Postgres 枚举类型名
+#[serde(rename_all = "lowercase")]
 pub enum UserStatus {
     #[default] // 标记默认变体
     #[serde(rename = "active")]

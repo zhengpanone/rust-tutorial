@@ -1,5 +1,4 @@
 use prometheus::{Counter, CounterVec, Gauge, Histogram, HistogramOpts, Registry, opts};
-use serde::Serialize;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::time::Instant;

@@ -2,7 +2,6 @@ use axum::http::Method;
 use core::fmt;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
-use utoipa::openapi::security::Http;
 
 /// HTTP 包装类型，支持序列化
 #[derive(Debug, Clone, PartialEq, Eq)]

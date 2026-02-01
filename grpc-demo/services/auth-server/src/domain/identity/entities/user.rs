@@ -1,13 +1,21 @@
 // src/domain/identity/entities/user.rs
 
 use chrono::{DateTime, Utc};
-use common::security::jwt::claim::UserStatus;
+
+pub use common::security::jwt::claim::UserStatus;
 use serde::{Deserialize, Serialize};
+use sqlx::types::Json;
+use sqlx::{FromRow, Type};
 use utoipa::ToSchema;
 use validator::Validate;
 
 /// 用户实体
-#[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
+/// 派生特性说明
+/// Debug：用于调试打印
+/// Clone：允许创建副本
+/// Serialize/Deserialize：JSON 序列化支持
+/// FromRow：自动将数据库行转换为 Rust 结构
+#[derive(Debug, Clone, Serialize, Deserialize, Validate, FromRow)]
 pub struct User {
     // 用户ID
     pub id: String,
@@ -46,11 +54,11 @@ pub struct User {
 
     /// 角色列表
     #[serde(default)]
-    pub roles: Vec<String>,
+    pub roles: Json<Vec<String>>,
 
     /// 权限列表
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub permissions: Vec<String>,
+    pub permissions: Json<Vec<String>>,
 
     /// 是否已验证邮箱
     #[serde(default)]
@@ -70,11 +78,11 @@ pub struct User {
 
     /// 登录次数
     #[serde(default)]
-    pub login_count: u32,
+    pub login_count: i32,
 
     /// 失败登录次数
     #[serde(default)]
-    pub failed_login_count: u32,
+    pub failed_login_count: i32,
 
     /// 最后失败登录时间
     #[serde(skip_serializing_if = "Option::is_none")]

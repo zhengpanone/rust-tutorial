@@ -24,12 +24,12 @@ EOF
 cargo run -p user-server
 
 # 使用 cargo watch
-cargo watch -x 'run -p user-server'
+cargo watch -x 'run -p auth-server'
 
-cargo watch -x 'run --package user-server'
+cargo watch -x 'run --package auth-server'
 cargo watch -w user-server -x 'run'
 # 带有清理和重建
-cargo watch -x 'clean -p user-server' -x 'run -p user-server'
+cargo watch -x 'clean -p auth-server' -x 'run -p auth-server'
 
 # 验证
 grpcurl -plaintext 127.0.0.1:50051 list

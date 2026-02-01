@@ -3,20 +3,20 @@ use crate::app::{middleware::http::auth::extractor::AuthUser, state::AppState};
 use axum::{
     body::Body,
     extract::{Request, State},
-    http::{HeaderMap, Request, StatusCode, Uri, header, request::Parts},
+    http::{HeaderMap, StatusCode, Uri, request::Parts},
     middleware::Next,
     response::Response,
 };
 use chrono::{DateTime, Utc};
-use common::{security::jwt::claim::JwtClaim, web::http_method::HttpMethod};
+use common::security::jwt::claim::JwtClaim;
+use common::web::http_method::HttpMethod;
 use rand::Rng;
-use regex::bytes;
 use serde::{Deserialize, Serialize};
 use std::{
     sync::Arc,
     time::{Duration, Instant},
 };
-use tracing::{Level, Span, debug};
+use tracing::{Span, debug, error, info, warn};
 use uuid::Uuid;
 
 /// 请求日志配置
@@ -105,7 +105,7 @@ pub async fn request_logger(
     State(state): State<Arc<AppState>>,
     request: Request,
     next: Next,
-) -> Response {
+) -> Response<Body> {
     // 获取
     let config = get_logger_config(&state);
     // 如果未启用，则跳过
@@ -199,8 +199,19 @@ pub async fn request_logger(
         duration,
         &config,
     );
+    response_log.log_complete(&method, &uri, &client_ip, request_body.as_deref());
 
-    // TODO
+    // 记录慢记录
+    if duration.as_millis() > config.slow_request_threshold_ms as u128 {
+        log_slow_request(&request_id, &method, &uri, duration, &config);
+    }
+
+    // 记录指标
+    record_metrics(&state, &method, &uri, status, duration);
+
+    // 记录审计日志
+    record_audit_log(&state, &request_log, &response_log, request_body.as_deref());
+
     response
 }
 
@@ -352,72 +363,63 @@ impl ResponseLog {
 
     fn log_complete(
         &self,
-        method: &Method,
+        method: &HttpMethod,
         uri: &Uri,
         client_ip: &str,
-        user_id: &Option<String>,
         request_body: Option<&str>,
     ) {
         let status_class = self.status.as_u16() / 100;
         let duration_ms = self.duration.as_millis();
         let duration_secs = self.duration.as_secs_f64();
 
-        // 根据状态码选择日志级别
         // 运行期等级 —— 只给 event 用
         let log_level = match status_class {
-            5 => tracing::Level::ERROR, // 5xx错误
-            4 => tracing::Level::WARN,  // 4xx错误
-            _ => tracing::Level::INFO,  // 成功
+            5 => tracing::Level::ERROR,
+            4 => tracing::Level::WARN,
+            _ => tracing::Level::INFO,
         };
 
-        let event = tracing::event!(
+        // Span：必须是编译期常量 level
+        let span = tracing::span!(
             target: "http_request",
-            level: log_level,
+            tracing::Level::INFO,
+            "http_request",
             request_id = %self.request_id,
             method = %method,
             uri = %uri,
             status = %self.status,
-            duration_ms = duration_ms,
-            duration_secs = duration_secs,
+            duration_ms,
+            duration_secs,
             client_ip = %client_ip,
-            user_id = ?user_id,
             content_type = ?self.content_type,
             content_length = ?self.content_length,
-            request_body = ?request_body.map(|b| if b.len() > 100 { format!("{}...", &b[..100]) } else { b.to_string() }),
+            request_body = ?request_body.map(|b| {
+                if b.len() > 100 {
+                    format!("{}...", &b[..100])
+                } else {
+                    b.to_string()
+                }
+            }),
         );
 
-        // 使用log!宏记录
-        match log_level {
-            tracing::Level::ERROR => error!(
-                parent: &event,
-                "📤 Request completed with error"
-            ),
-            tracing::Level::WARN => warn!(
-                parent: &event,
-                "📤 Request completed with client error"
-            ),
-            _ => info!(
-                parent: &event,
-                "📤 Request completed successfully"
-            ),
-        }
+        span.in_scope(|| {
+            match log_level {
+                tracing::Level::ERROR => {
+                    error!("Request completed with error");
+                }
+                tracing::Level::WARN => {
+                    warn!("Request completed with warning");
+                }
+                _ => {
+                    info!("Request completed successfully");
+                }
+            }
 
-        // 结构化日志
-        debug!(
-            request_id = %self.request_id,
-            method = %method,
-            uri = %uri,
-            status = %self.status,
-            status_code = self.status.as_u16(),
-            duration_ms = duration_ms,
-            duration_secs = duration_secs,
-            client_ip = %client_ip,
-            user_id = ?user_id,
-            content_type = ?self.content_type,
-            content_length = ?self.content_length,
-            headers = ?self.headers,
-            "📤 Response sent"
-        );
+            debug!(
+                headers = ?self.headers,
+                "Response sent"
+            );
+        });
     }
 }
 
@@ -541,4 +543,52 @@ async fn extract_response_body(body: Body, config: &RequestLoggerConfig) -> (Bod
         }
     }
     (Body::empty(), None)
+}
+
+/// 记录慢请求
+fn log_slow_request(
+    request_id: &str,
+    method: &HttpMethod,
+    uri: &Uri,
+    duration: Duration,
+    config: &RequestLoggerConfig,
+) {
+    let duration_ms = duration.as_millis();
+
+    warn!(
+        request_id=%request_id,
+        method=%method,
+        uri = %uri,
+        duration_ms=%duration_ms,
+        threshold_ms = config.slow_request_threshold_ms,
+        "Slow request detected"
+    );
+}
+
+/// 记录指标
+fn record_metrics(
+    state: &AppState,
+    method: &HttpMethod,
+    uri: &Uri,
+    status: StatusCode,
+    duration: Duration,
+) {
+    // 记录请求统计
+    state.record_request(
+        uri.path(),
+        method.as_str(),
+        duration.as_millis() as u64,
+        status.is_success(),
+    );
+    // TODO
+}
+
+fn record_audit_log(
+    state: &AppState,
+    request_log: &RequestLog,
+    response_log: &ResponseLog,
+    request_body: Option<&str>,
+) {
+    // 记录到审计日志表
+    // TODO
 }

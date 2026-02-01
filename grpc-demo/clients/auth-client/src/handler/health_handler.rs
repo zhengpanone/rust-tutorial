@@ -1,24 +1,20 @@
 use crate::domain::response::common::ApiResponse;
 use crate::state::AppState;
 use axum::Json;
-use axum::extract::{MatchedPath, Request, State};
+use axum::extract::State;
 use axum::response::IntoResponse;
 use chrono::Utc;
 use metrics::{counter, histogram};
 use rand::random;
 use std::sync::Arc;
-use std::sync::atomic::Ordering;
-use axum::http::StatusCode;
-use axum::middleware::Next;
-use defer::defer;
+
 use tokio::time::Instant;
 
-use uuid::Uuid;
 use prometheus::{
-    Encoder, TextEncoder, Registry,
-    Counter, Opts, Gauge, Histogram, HistogramOpts,
-    labels, IntCounter, IntGauge,
+    Counter, Encoder, Gauge, Histogram, HistogramOpts, IntCounter, IntGauge, Opts, Registry,
+    TextEncoder, labels,
 };
+use uuid::Uuid;
 
 pub async fn health_check() -> impl IntoResponse {
     let start_time = Instant::now();
@@ -76,4 +72,3 @@ pub async fn get_stats(State(state): State<Arc<AppState>>) -> impl IntoResponse 
         timestamp: Some(Utc::now().to_rfc3339()),
     })
 }
-

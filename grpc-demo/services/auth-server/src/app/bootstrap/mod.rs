@@ -1,11 +1,13 @@
-use crate::{api::http::configure_routes, app::middleware::http::logging::request_logger};
 use crate::app::config::config::AppConfig;
 use crate::app::state::AppState;
-use axum::{Router, middleware};
+use crate::application::handlers::metrics_handler::get_metrics;
+use crate::{api::http::configure_routes, app::middleware::http::logging::request_logger};
+use axum::Router;
 use common::error::{AppError, AppResult};
 use std::error::Error;
 use std::sync::Arc;
 use tracing::{error, info};
+use utoipa_swagger_ui::SwaggerUi;
 
 // 启动器主模块
 pub mod database; // 数据库初始化
@@ -139,27 +141,70 @@ impl AppBootstrap {
         }
         todo!()
     }
-
-    fn configure_http_router(&self, state: Arc<AppState>) -> Router {
+    /// 配置HTTP路由
+    fn configure_http_router(&self, state: Arc<AppState>) -> Router<Arc<AppState>> {
         // 1. 配置API路由
         let mut app = configure_routes();
 
         // 2. 添加状态
         app = app.with_state(state.clone());
         // 3. 添加全局中间件
-        app = self.add_global_middleware(app);
+        app = self.add_global_middleware(state.clone(), app);
 
         // 4. 添加OpenAPI文档
-        // app = self.add_openapi_docs(app);
+        app = self.add_openapi_docs(app);
 
         // 5. 添加监控端点
         // app = self.add_monitoring_endpoints(app);
         app
     }
 
-    fn add_global_middleware(self, app: Router<Arc<AppState>>) -> Router<Arc<AppState>> {
+    /// 添加OpenAPI文档
+    fn add_global_middleware(
+        &self,
+        app_state: Arc<AppState>,
+        app: Router<Arc<AppState>>,
+    ) -> Router<Arc<AppState>> {
         use axum::middleware;
-        app.layer(middleware::from_fn(request_logger))
+        app.layer(middleware::from_fn_with_state(app_state, request_logger))
+    }
+
+    fn add_openapi_docs(&self, app: Router<Arc<AppState>>) -> Router<Arc<AppState>> {
+        if self.config.server.enable_openapi {
+            // TODO
+            todo!()
+        } else {
+            app
+        }
+    }
+
+    fn add_monitoring_endpoints(&self, app: Router<Arc<AppState>>) -> Router<Arc<AppState>> {
+        use axum::routing::get;
+        let mut router = app;
+        // 健康检查
+        router = router.route(
+            "/health",
+            get(crate::application::handlers::health_handler::health_check),
+        );
+        router = router.route(
+            "/ready",
+            get(crate::application::handlers::health_handler::ready_check),
+        );
+        router = router.route(
+            "/live",
+            get(crate::application::handlers::health_handler::live_check),
+        );
+
+        // 指标
+        if self.config.server.enable_metrics {
+            router = router.route("/metrics", get(get_metrics))
+        }
+        // 版本信息
+        router = router.route(
+            "/version",
+            get(|| async { format!("Microservice Manager v{}", env!("CARGO_PKG_VERSION")) }),
+        );
+        router
     }
 
     pub fn state(&self) -> Option<&Arc<AppState>> {

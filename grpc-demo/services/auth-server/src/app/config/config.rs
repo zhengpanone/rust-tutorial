@@ -58,6 +58,12 @@ impl AppConfig {
 /// 服务器配置
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
 pub struct ServerConfig {
+
+    /// 是否启用OpenAPI
+    pub enable_openapi: bool,
+
+    /// 是否启用监控
+    pub enable_metrics: bool,
     /// 是否启用
     pub enable_http: bool,
     /// 主机地址

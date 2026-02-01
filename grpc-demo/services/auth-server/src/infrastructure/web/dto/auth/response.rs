@@ -1,5 +1,7 @@
+use crate::domain::identity::entities::user::User;
 use chrono::{DateTime, Utc};
-use common::security::jwt::claim::{DeviceInfo, UserStatus};
+use common::security::jwt::claim::DeviceInfo;
+use common::security::jwt::claim::UserStatus;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
@@ -109,6 +111,28 @@ pub struct SessionInfoResponse {
     /// 会话元数据
     #[serde(skip_serializing_if = "Option::is_none")]
     pub metadata: Option<serde_json::Value>,
+}
+
+impl From<User> for AuthUserResponse {
+    fn from(user: User) -> Self {
+        Self {
+            id: user.id,
+            username: user.username,
+            email: user.email,
+            display_name: user.display_name,
+            avatar_url: user.avatar_url,
+            phone: user.phone,
+            roles: user.roles.0,             // 这里 .0 拿到 Vec<String>
+            permissions: user.permissions.0, // 这里 .0 拿到 Vec<String>
+            email_verified: user.email_verified,
+            phone_verified: user.phone_verified,
+            status: user.status,
+            last_login_at: user.last_login_at,
+            created_at: user.created_at,
+            updated_at: user.updated_at,
+            metadata: user.metadata,
+        }
+    }
 }
 
 fn default_true() -> bool {
