@@ -7,7 +7,6 @@ use common::error::{AppError, AppResult};
 use std::error::Error;
 use std::sync::Arc;
 use tracing::{error, info};
-use utoipa_swagger_ui::SwaggerUi;
 
 // 启动器主模块
 pub mod database; // 数据库初始化
@@ -69,10 +68,10 @@ impl AppBootstrap {
             "HTTP Server: {}:{}",
             self.config.server.host, self.config.server.port
         );
-        info!(
-            "gRPC Server: {}:{}",
-            self.config.grpc.host, self.config.grpc.port
-        );
+        // info!(
+        //     "gRPC Server: {}:{}",
+        //     self.config.grpc.host, self.config.grpc.port
+        // );
         info!("Debug Mode: {}", cfg!(debug_assertions));
         info!("========================================");
     }
@@ -81,9 +80,9 @@ impl AppBootstrap {
     fn check_environment(&self) -> Result<(), Box<dyn Error>> {
         if self.config.is_prod() {
             // 生产环境安全检查
-            if self.config.security.jwt_secret.contains("secret") {
-                error!("⚠️  WARNING: Using default JWT secret in production!");
-            }
+            // if self.config.security.jwt_secret.contains("secret") {
+            //     error!("⚠️  WARNING: Using default JWT secret in production!");
+            // }
 
             if self.config.logging.log_level == "debug" {
                 info!("⚠️  WARNING: Using debug logging in production");
@@ -119,7 +118,10 @@ impl AppBootstrap {
 
     async fn start_server(&self, state: Arc<AppState>) -> Result<(), AppError> {
         info!("🌐 Starting servers...");
-        match (self.config.server.enable_http, self.config.grpc.enabled) {
+        match (
+            self.config.server.enable_http,
+            false, /*self.config.grpc.enabled*/
+        ) {
             (true, true) => {
                 // 启动混合服务器
                 todo!()

@@ -17,7 +17,7 @@ impl ConfigSummaryGenerator {
                 .redis
                 .as_ref()
                 .map(|r| Self::mask_sensitive_url(&r.url)),
-            has_message_queue: config.rabbitmq.is_some(),
+            // has_message_queue: config.message_queue.is_some(),
             config_files_count: 1, // TODO：统计配置文件数量
             env_vars_count: Self::count_env_overrides(config),
         }
@@ -38,7 +38,6 @@ HTTP 服务器: {}:{}
 gRPC 服务器: {}:{}
 数据库: {}
 Redis: {}
-RabbitMQ: {}
 日志级别: {}
 日志目录: {}
 JWT 过期时间: {} 分钟
@@ -55,11 +54,11 @@ JWT 过期时间: {} 分钟
                 .as_ref()
                 .map(|r| Self::mask_sensitive_url(&r.url))
                 .unwrap_or_else(|| "未启用".to_string()),
-            config
-                .rabbitmq
-                .as_ref()
-                .map(|r| r.url.clone())
-                .unwrap_or_else(|| "未启用".to_string()),
+            // config
+            //     .message_queue
+            //     .as_ref()
+            //     .map(|r| r.connection.url.clone())
+            //     .unwrap_or_else(|| "未启用".to_string()),
             config.logging.log_level,
             config.logging.log_dir,
             config.security.jwt_expiry_minutes,

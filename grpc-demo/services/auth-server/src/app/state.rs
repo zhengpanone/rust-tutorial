@@ -24,19 +24,20 @@ use std::{
     u64,
 };
 use uuid::Uuid;
+use crate::app::setup::AppServices;
 
 #[derive(Clone)]
 pub struct AppState {
     /// 配置
-    pub config: Arc<AppConfig>,
+    pub services: Arc<AppServices>,
     /// 数据库池
     pub db_pool: PgPool,
     /// Redis连接池
     pub redis_pool: Option<RedisPool>,
 
     /// RabbitMQ连接
-    pub rabbitmq_connection: Option<Arc<RabbitmqConnection>>,
-    pub rabbitmq_channel: Option<Arc<Channel>>,
+    // pub rabbitmq_connection: Option<Arc<RabbitmqConnection>>,
+    // pub rabbitmq_channel: Option<Arc<Channel>>,
 
     /// 安全服务
     pub jwt_service: Arc<JwtService>,
@@ -46,7 +47,7 @@ pub struct AppState {
     pub auth_app: Arc<dyn AuthApp + Send + Sync>,
     pub user_app: Arc<dyn UserApp + Send + Sync>,
 
-    pub request_stats: Arc<RequestStats>,
+    // pub request_stats: Arc<RequestStats>,
 }
 
 impl AppState {
@@ -71,92 +72,92 @@ impl AppState {
         todo!()
     }
 
-    /// 记录请求统计
-    pub fn record_request(&self, endpoint: &str, method: &str, duration_ms: u64, success: bool) {
-        // 更新总请求数
-        self.request_stats
-            .total_requests
-            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-
-        if success {
-            self.request_stats
-                .successful_requests
-                .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-        } else {
-            self.request_stats
-                .failed_requests
-                .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-        }
-
-        // 更新统计端点
-        let endpoint_key = format!("{}:{}", method, endpoint);
-        let mut entry = self
-            .request_stats
-            .endponit_stats
-            .entry(endpoint_key.clone())
-            .or_insert_with(|| EndpointStats {
-                endpoint: endpoint.to_string(),
-                method: method.to_string(),
-                call_count: 0,
-                success_count: 0,
-                error_count: 0,
-                avg_response_time_ms: 0.0,
-                min_response_time_ms: u64::MAX,
-                max_response_time_ms: 0,
-                last_called_at: None,
-            });
-
-        entry.call_count += 1;
-        if success {
-            entry.success_count += 1;
-        } else {
-            entry.error_count += 1;
-        }
-
-        // 更新响应时间统计
-        if duration_ms < entry.min_response_time_ms {
-            entry.min_response_time_ms = duration_ms;
-        }
-        if duration_ms > entry.max_response_time_ms {
-            entry.max_response_time_ms = duration_ms;
-        }
-
-        // 计算平均响应时间
-        let total_response_time = entry.avg_response_time_ms * (entry.call_count - 1) as f64;
-        entry.avg_response_time_ms =
-            (total_response_time + duration_ms as f64) / entry.call_count as f64;
-
-        entry.last_called_at = Some(Utc::now());
-    }
-
-    pub fn record_user_request(&self, user_id: &Uuid, endpoint: &str) {
-        let user_key = user_id.to_string();
-        let mut entry = self
-            .request_stats
-            .user_stats
-            .entry(user_key.clone())
-            .or_insert_with(|| UserRequestStats {
-                user_id: *user_id,
-                total_requests: 0,
-                last_request_at: None,
-                active_days: Vec::new(),
-                endpoint_distribution: HashMap::new(),
-            });
-        entry.total_requests += 1;
-        entry.last_request_at = Some(Utc::now());
-
-        // 记录活跃日期
-        let today = Utc::now().date_naive();
-        if !entry.active_days.contains(&today) {
-            entry.active_days.push(today);
-        }
-
-        // 记录端点分布
-        *entry
-            .endpoint_distribution
-            .entry(endpoint.to_string())
-            .or_insert(0) += 1;
-    }
+    // /// 记录请求统计
+    // pub fn record_request(&self, endpoint: &str, method: &str, duration_ms: u64, success: bool) {
+    //     // 更新总请求数
+    //     self.request_stats
+    //         .total_requests
+    //         .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+    //
+    //     if success {
+    //         self.request_stats
+    //             .successful_requests
+    //             .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+    //     } else {
+    //         self.request_stats
+    //             .failed_requests
+    //             .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+    //     }
+    //
+    //     // 更新统计端点
+    //     let endpoint_key = format!("{}:{}", method, endpoint);
+    //     let mut entry = self
+    //         .request_stats
+    //         .endponit_stats
+    //         .entry(endpoint_key.clone())
+    //         .or_insert_with(|| EndpointStats {
+    //             endpoint: endpoint.to_string(),
+    //             method: method.to_string(),
+    //             call_count: 0,
+    //             success_count: 0,
+    //             error_count: 0,
+    //             avg_response_time_ms: 0.0,
+    //             min_response_time_ms: u64::MAX,
+    //             max_response_time_ms: 0,
+    //             last_called_at: None,
+    //         });
+    //
+    //     entry.call_count += 1;
+    //     if success {
+    //         entry.success_count += 1;
+    //     } else {
+    //         entry.error_count += 1;
+    //     }
+    //
+    //     // 更新响应时间统计
+    //     if duration_ms < entry.min_response_time_ms {
+    //         entry.min_response_time_ms = duration_ms;
+    //     }
+    //     if duration_ms > entry.max_response_time_ms {
+    //         entry.max_response_time_ms = duration_ms;
+    //     }
+    //
+    //     // 计算平均响应时间
+    //     let total_response_time = entry.avg_response_time_ms * (entry.call_count - 1) as f64;
+    //     entry.avg_response_time_ms =
+    //         (total_response_time + duration_ms as f64) / entry.call_count as f64;
+    //
+    //     entry.last_called_at = Some(Utc::now());
+    // }
+    //
+    // pub fn record_user_request(&self, user_id: &Uuid, endpoint: &str) {
+    //     let user_key = user_id.to_string();
+    //     let mut entry = self
+    //         .request_stats
+    //         .user_stats
+    //         .entry(user_key.clone())
+    //         .or_insert_with(|| UserRequestStats {
+    //             user_id: *user_id,
+    //             total_requests: 0,
+    //             last_request_at: None,
+    //             active_days: Vec::new(),
+    //             endpoint_distribution: HashMap::new(),
+    //         });
+    //     entry.total_requests += 1;
+    //     entry.last_request_at = Some(Utc::now());
+    //
+    //     // 记录活跃日期
+    //     let today = Utc::now().date_naive();
+    //     if !entry.active_days.contains(&today) {
+    //         entry.active_days.push(today);
+    //     }
+    //
+    //     // 记录端点分布
+    //     *entry
+    //         .endpoint_distribution
+    //         .entry(endpoint.to_string())
+    //         .or_insert(0) += 1;
+    // }
 }
 
 /// 请求统计
@@ -222,7 +223,7 @@ pub struct UserRequestStats {
 //     // role_service: Arc<RoleService>,
 // }
 //
-// impl App {
+// impls App {
 //     pub async fn new(config: Config) -> Result<Self, Error> {
 //         let state = Arc::new(AppState::new(config).await?);
 //         Ok(Self {

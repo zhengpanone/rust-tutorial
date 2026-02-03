@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::types::Json;
 use sqlx::{FromRow, Type};
 use utoipa::ToSchema;
+use uuid::Uuid;
 use validator::Validate;
 
 /// 用户实体
@@ -18,7 +19,7 @@ use validator::Validate;
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, FromRow)]
 pub struct User {
     // 用户ID
-    pub id: String,
+    pub id: Uuid,
 
     /// 用户名
     #[validate(length(min = 3, max = 50, message = "用户名长度必须在3-50个字符之间"))]

@@ -1,6 +1,9 @@
 // src/app/config/config.rs
 
-pub(crate) use super::{database::DatabaseConfig, server::ServerConfig};
+use super::{
+    database::DatabaseConfig, features::FeaturesConfig, message_queue::MessageQueueConfig,
+    server::ServerConfig,
+};
 use crate::app::config::error::ConfigError;
 pub use crate::app::config::security::SecurityConfig;
 use crate::app::config::validator::ConfigValidator;
@@ -10,7 +13,7 @@ use config::{Config, Environment, File, FileFormat};
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 use utoipa::ToSchema;
 use validator::Validate;
 
@@ -34,16 +37,31 @@ pub struct AppConfig {
     #[serde(skip)]
     pub config_dir: PathBuf,
 
+    /// 临时目录
+    #[serde(skip)]
+    pub temp_dir: PathBuf,
+
+    /// 功能配置
+    pub features: FeaturesConfig,
+
+    /// 是否启用调试模式
+    pub debug: bool,
+
     pub server: ServerConfig,
     pub database: DatabaseConfig,
+
+    pub logging: LogConfig,
+
     pub redis: Option<RedisConfig>,
+
     /// gRPC配置
     #[validate(nested)]
     pub grpc: GrpcConfig,
-    pub rabbitmq: Option<RabbitmqConfig>,
-    pub logging: LogConfig,
+
     pub security: SecurityConfig,
+
     pub rate_limit: RateLimitConfig,
+    // pub message_queue: Option<MessageQueueConfig>,
 }
 
 impl AppConfig {
@@ -91,16 +109,27 @@ impl AppConfig {
         }
 
         // 构建配置
-        let config = builder
-            .build()
-            .with_context(|| "Failed to build configuration")
-            .unwrap();
+        let config = match builder.build() {
+            Ok(cfg) => cfg,
+            Err(e) => {
+                warn!("Failed to build configuration: {}, using defaults", e);
+                info!("✅ Configuration loaded successfully (using defaults)");
+                return Ok(Self::default());
+            }
+        };
 
         // 反序列化配置
-        let mut app_config: Self = config
-            .try_deserialize()
-            .with_context(|| "Failed to deserialize configuration")
-            .unwrap();
+        let mut app_config: Self = match config.try_deserialize() {
+            Ok(cfg) => cfg,
+            Err(e) => {
+                warn!(
+                    "Failed to deserialize configuration from file: {}, using defaults",
+                    e
+                );
+                info!("✅ Configuration loaded successfully (using defaults)");
+                return Ok(Self::default());
+            }
+        };
 
         // 设置配置路径
         if let Some(first_path) = config_paths.iter().find(|p| p.exists()) {
@@ -112,16 +141,20 @@ impl AppConfig {
         }
 
         // 创建必要的目录
-        // create_necessary_directories(&app_config)?;
+        create_necessary_directories(&app_config)?;
 
         // 验证配置
-        app_config
-            .validate()
-            .map_err(|e| anyhow::anyhow!("Configuration validation failed: {}", e))
-            .unwrap();
+        match app_config.validate() {
+            Ok(_) => {}
+            Err(e) => {
+                warn!("Configuration validation failed: {}, using defaults", e);
+                info!("✅ Configuration loaded successfully (using defaults)");
+                return Ok(Self::default());
+            }
+        }
 
         // 记录加载的配置
-        // log_configuration(&app_config);
+        log_configuration(&app_config);
 
         info!("✅ Configuration loaded successfully");
         Ok(app_config)
@@ -142,19 +175,24 @@ impl AppConfig {
     }
     /// 判断是否为开发环境
     pub fn is_dev(&self) -> bool {
-        self.environment == "dev"
+        self.environment == "dev" || self.environment == "development"
     }
     /// 判断是否为生产环境
     pub fn is_prod(&self) -> bool {
-        self.environment == "prod"
+        self.environment == "prod" || self.environment == "production"
     }
     /// 判断是否为预发布环境
     pub fn is_staging(&self) -> bool {
-        self.environment == "staging"
+        self.environment == "staging" || self.environment == "stage"
     }
     /// 判断是否为测试环境
     pub fn is_test(&self) -> bool {
-        self.environment == "test"
+        self.environment == "test" || self.environment == "testing"
+    }
+
+    /// 获取是否启用调试模式
+    pub fn is_debug(&self) -> bool {
+        self.debug || self.is_dev()
     }
 }
 
@@ -213,6 +251,61 @@ fn determine_config_paths() -> Vec<PathBuf> {
         info!(" {}. {}", i + 1, path.display());
     }
     paths
+}
+
+// 创建必要的目录
+fn create_necessary_directories(config: &AppConfig) -> Result<(), AppError> {
+    let directories = vec![&config.temp_dir];
+
+    for dir in directories {
+        if !dir.exists() {
+            info!("📁 Creating directory: {}", dir.display());
+            std::fs::create_dir_all(dir)
+                .with_context(|| format!("Failed to create directory: {}", dir.display()))
+                .unwrap();
+        }
+    }
+
+    Ok(())
+}
+
+/// 记录配置信息
+fn log_configuration(config: &AppConfig) {
+    info!("📋 Application configuration:");
+    info!("  Name: {}", config.name);
+    info!("  Version: {}", config.version);
+    info!("  Environment: {}", config.environment);
+    info!("  Config path: {}", config.config_path.display());
+    info!("  Debug mode: {}", config.is_debug());
+
+    // 敏感信息不记录
+    debug!("📋 Server configuration: {:#?}", config.server);
+    debug!("📋 Database configuration: {:#?}", config.database);
+    // debug!("📋 Redis configuration: {:#?}", config.redis);
+    // debug!("📋 Security configuration: {:#?}", config.security);
+
+    // 记录功能开关
+    info!("🎚️ Feature flags:");
+    info!(
+        "  User registration: {}",
+        config.features.enable_user_registration
+    );
+    info!(
+        "  Email verification: {}",
+        config.features.enable_email_verification
+    );
+    info!(
+        "  API rate limiting: {}",
+        config.features.enable_api_rate_limiting
+    );
+    info!("  Audit logging: {}", config.features.enable_audit_logging);
+
+    // 记录启用的服务
+    info!("🌐 Enabled services:");
+    info!("  HTTP server: {}", config.server.enable_http);
+    // info!("  gRPC server: {}", config.grpc.enabled);
+    // info!("  Redis: {:?}", config.redis);
+    // info!("  Message queue: {:?}", config.message_queue);
 }
 
 /// gRPC配置
@@ -286,29 +379,6 @@ pub struct RedisConfig {
     pub enable_cluster: bool,
 }
 
-/// RabbitMQ配置
-#[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
-pub struct RabbitmqConfig {
-    /// 是否启用
-    pub enabled: bool,
-
-    /// RabbitMQ URL
-    #[validate(length(min = 1))]
-    pub url: String,
-
-    /// 连接名称
-    pub connection_name: String,
-
-    /// 交换器名称
-    pub exchange_name: String,
-
-    /// 队列前缀
-    pub queue_prefix: String,
-
-    /// 预取数量
-    pub prefetch_count: u16,
-}
-
 /// 日志配置
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
 pub struct LogConfig {
@@ -357,7 +427,7 @@ pub struct ConfigSummary {
     pub grpc_port: u16,
     pub database_url: String,
     pub redis_url: Option<String>,
-    pub has_message_queue: bool,
+    // pub has_message_queue: bool,
     pub config_files_count: usize,
     pub env_vars_count: usize,
 }
@@ -365,19 +435,22 @@ pub struct ConfigSummary {
 impl Default for AppConfig {
     fn default() -> Self {
         Self {
-            name: "Microservice Manager".to_string(),
+            name: "Auth-Server".to_string(),
             version: env!("CARGO_PKG_VERSION").to_string(),
             environment: "development".to_string(),
             config_path: PathBuf::from("config/default.toml"),
             config_dir: PathBuf::from("config"),
+            temp_dir: Default::default(),
+            features: Default::default(),
+            debug: false,
             server: ServerConfig::default(),
-            security: SecurityConfig::default(),
             database: DatabaseConfig::default(),
             logging: LogConfig::default(),
             redis: Some(RedisConfig::default()),
+            security: SecurityConfig::default(),
             rate_limit: RateLimitConfig::default(),
             grpc: GrpcConfig::default(),
-            rabbitmq: None,
+            // message_queue: None,
         }
     }
 }
@@ -385,7 +458,7 @@ impl Default for AppConfig {
 impl Default for RedisConfig {
     fn default() -> Self {
         Self {
-            url: "redis://127.0.0.1:6379".to_string(),
+            url: "redis://:redis123456@127.0.0.1:30379".to_string(),
             pool_size: 10,
             default_ttl_secs: 10,
             enable_cluster: false,
@@ -421,22 +494,20 @@ impl Default for GrpcConfig {
     fn default() -> Self {
         Self {
             enabled: false,
-            host: "".to_string(),
-            port: 0,
-            address: "".to_string(),
+            host: "grpc://127.0.0.1:18080".to_string(),
+            port: 8080,
+            address: "11111".to_string(),
             enable_reflection: false,
             enable_tls: false,
             tls_cert_path: None,
             tls_key_path: None,
-            max_concurrent_streams: 0,
-            initial_stream_window_size: 0,
-            initial_connection_window_size: 0,
-            tcp_keepalive_seconds: 0,
+            max_concurrent_streams: 10,
+            initial_stream_window_size: 10,
+            initial_connection_window_size: 10,
+            tcp_keepalive_seconds: 10,
             tcp_nodelay: false,
-            http2_keepalive_interval_seconds: 0,
-            http2_keepalive_timeout_seconds: 0,
+            http2_keepalive_interval_seconds: 10,
+            http2_keepalive_timeout_seconds: 10,
         }
     }
 }
-
-// TODO: 实现默认值

@@ -56,7 +56,7 @@ async fn ready_check() -> impl IntoResponse {
 // // 获取用户信息
 // async fn get_user(
 //     Path(user_id): Path<String>,
-// ) -> impl IntoResponse {
+// ) -> impls IntoResponse {
 //     let start_time = Instant::now();
 //
 //     info!("📥 GET /api/v1/users/{}", user_id);
@@ -137,7 +137,7 @@ async fn ready_check() -> impl IntoResponse {
 // // 创建用户
 // async fn create_user(
 //     Json(payload): Json<UserRequest>,
-// ) -> impl IntoResponse {
+// ) -> impls IntoResponse {
 //     let start_time = Instant::now();
 //
 //     info!("📝 POST /api/v1/users with ID: {}", payload.id);
@@ -210,7 +210,7 @@ async fn ready_check() -> impl IntoResponse {
 // async fn update_user(
 //     Path(user_id): Path<String>,
 //     Json(payload): Json<UserRequest>,
-// ) -> impl IntoResponse {
+// ) -> impls IntoResponse {
 //     let start_time = Instant::now();
 //
 //     info!("🔄 POST /api/v1/users/{} (update)", user_id);
@@ -247,7 +247,7 @@ async fn ready_check() -> impl IntoResponse {
 // // 删除用户
 // async fn delete_user(
 //     Path(user_id): Path<String>,
-// ) -> impl IntoResponse {
+// ) -> impls IntoResponse {
 //     let start_time = Instant::now();
 //
 //     info!("🗑️  DELETE /api/v1/users/{}", user_id);
@@ -275,7 +275,7 @@ async fn ready_check() -> impl IntoResponse {
 // }
 //
 // // 获取服务信息
-// async fn service_info() -> impl IntoResponse {
+// async fn service_info() -> impls IntoResponse {
 //     Json(ApiResponse {
 //         success: true,
 //         data: Some(serde_json::json!({
@@ -296,7 +296,7 @@ async fn ready_check() -> impl IntoResponse {
 // }
 //
 // // 获取指标信息
-// async fn metrics_info() -> impl IntoResponse {
+// async fn metrics_info() -> impls IntoResponse {
 //     let metrics = vec![
 //         MetricsInfo {
 //             endpoint: "user_service_requests_total".to_string(),

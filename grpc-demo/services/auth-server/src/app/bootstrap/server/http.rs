@@ -1,12 +1,11 @@
-use crate::app::config::config::ServerConfig;
+use crate::app::config::server::ServerConfig;
 use crate::app::state::AppState;
-use crate::application::handlers::{auth_handler, health_handler};
+use crate::application::handlers::health_handler;
 use axum::Router;
-use axum::routing::post;
-use std::net::{SocketAddr, TcpListener};
-use std::sync::Arc;
-use tracing::info;
 
+use std::net::SocketAddr;
+
+use tracing::info;
 
 // src/app/bootstrap/server/http.rs
 pub async fn start_http_server(state: AppState, server_config: &ServerConfig) {
@@ -33,21 +32,18 @@ pub async fn start_http_server(state: AppState, server_config: &ServerConfig) {
 
 /// 构建路由器
 pub async fn build_router(state: AppState, server_config: &ServerConfig) -> Router {
-
-
     // let mut router = Router::new();
 
     // let public_routes = Router::new()
     //     .route("/api/v1/auth/login", post(auth_handler::login))
     //     .route("/api/v1/auth/register", post(auth_handler::register))
     //     .route("/api/v1/auth/logout", post(health_handler::health_check))
-        // Swagger UI
-        // .route(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", api.clone()))
-        // Redoc
-        // .route(Redoc::with_url("/redoc", api.clone()))
-        // .route(RapiDoc::new("/api-docs/openapi.json").path("/rapidoc"))
-        // .route(Scalar::with_url("/scalar", api))
-        ;
+    // Swagger UI
+    // .route(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", api.clone()))
+    // Redoc
+    // .route(Redoc::with_url("/redoc", api.clone()))
+    // .route(RapiDoc::new("/api-docs/openapi.json").path("/rapidoc"))
+    // .route(Scalar::with_url("/scalar", api))
 
     //
     // 业务 API

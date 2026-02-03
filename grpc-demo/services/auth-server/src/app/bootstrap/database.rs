@@ -1,7 +1,6 @@
 // src/app/bootstrap/database.rs
 
-use crate::app::config::config::DatabaseConfig;
-
+use crate::app::config::database::DatabaseConfig;
 use common::error::AppResult;
 use sqlx::PgPool;
 use sqlx::postgres::PgPoolOptions;

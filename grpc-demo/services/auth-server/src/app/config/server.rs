@@ -56,12 +56,12 @@ impl Default for ServerConfig {
             enable_http: true,
             enable_cors: true,
             cors_origins: vec![],
-            request_timeout_secs: 0,
+            request_timeout_secs: 10,
             enable_openapi: true,
             enable_health_check: true,
-            health_check_port: 0,
+            health_check_port: 8888,
             enable_metrics: true,
-            body_limit: 0,
+            body_limit: 10000,
             enable_hybrid: false,
         }
     }

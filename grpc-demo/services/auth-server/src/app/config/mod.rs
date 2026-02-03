@@ -1,13 +1,15 @@
 // src/app/config/mod.rs
 pub mod config;
 pub mod constants;
+pub mod database;
 pub mod error;
+pub mod features;
 pub mod loader;
+pub mod message_queue;
 pub mod security;
+pub mod server;
 pub mod summary;
 pub mod validator;
-mod server;
-mod database;
 
 #[cfg(test)]
 mod tests {
@@ -27,9 +29,9 @@ mod tests {
         println!("{}", config.environment);
 
         // 生成摘要
-        let summary: ConfigSummary = ConfigSummaryGenerator::generate(&config);
+        // let summary: ConfigSummary = ConfigSummaryGenerator::generate(&config);
 
-        println!("{}", summary.environment);
+        // println!("{}", summary.environment);
 
         // 生成详细摘要
         let detailed = ConfigSummaryGenerator::generate_detailed(&config);

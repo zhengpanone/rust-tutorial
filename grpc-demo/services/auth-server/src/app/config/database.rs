@@ -40,7 +40,7 @@ pub struct DatabaseConfig {
 impl Default for DatabaseConfig {
     fn default() -> Self {
         Self {
-            url: "postgres://postgres:password@localhost:5432/microservice_manager".to_string(),
+            url: "postgres://postgres:postgres@127.0.0.1:30432/gmall".to_string(),
             max_connections: 20,
             min_connections: 5,
             acquire_timeout_secs: 0,

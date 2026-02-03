@@ -44,7 +44,7 @@ pub async fn register(
     info!("用户注册成功: {} ({})", user.username, user.email);
 
     // 生成验证令牌
-    let verification_token = state.auth_app.generate_verification_token(&user.id).await?;
+    let verification_token = state.auth_app.generate_verification_token(&user.id.to_string()).await?;
     
     // 先提取需要的信息，避免移动后无法访问
     let user_email = user.email.clone();

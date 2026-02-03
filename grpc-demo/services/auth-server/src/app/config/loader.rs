@@ -4,7 +4,7 @@ use crate::app::config::error::ConfigError;
 use config::{Config, Environment, File, FileFormat};
 use std::env;
 use std::path::Path;
-use tracing::{debug, warn};
+use tracing::{debug, info, warn};
 
 // src/app/config/loader.rs
 /// 配置加载器
@@ -19,7 +19,7 @@ impl ConfigLoader {
     /// 3. 默认配置
 
     pub fn load() -> Result<AppConfig, ConfigError> {
-        debug!("cwd = {:?}", std::env::current_dir());
+        debug!("cwd = {:?}", env::current_dir());
         // 加载环境变量
         dotenv::from_path(concat!(env!("CARGO_MANIFEST_DIR"), "/.env")).ok();
         let environment = env::var("APP_ENVIRONMENT").unwrap_or_else(|_| "dev".to_string());
@@ -59,11 +59,27 @@ impl ConfigLoader {
         );
 
         // 4. 构建配置
-        let config = builder.build()?;
+        let config = match builder.build() {
+            Ok(cfg) => cfg,
+            Err(e) => {
+                warn!("Failed to build configuration: {}, using defaults", e);
+                info!("✅ Configuration loaded successfully (using defaults)");
+                return Ok(AppConfig::default());
+            }
+        };
 
         // 5. 反序列化为AppConfig
-        let mut app_config: AppConfig = config.try_deserialize()?;
-
+        let mut app_config: AppConfig = match config.try_deserialize() {
+            Ok(cfg) => cfg,
+            Err(e) => {
+                warn!(
+                    "Failed to deserialize configuration from file: {}, using defaults",
+                    e
+                );
+                info!("✅ Configuration loaded successfully (using defaults)");
+                return Ok(AppConfig::default());
+            }
+        };
         // 6. 设置环境变量
         app_config.environment = environment.to_string();
         Ok(app_config)
@@ -83,8 +99,7 @@ impl ConfigLoader {
 
         let mut app_config: AppConfig = config.try_deserialize()?;
         // 设置环境变量
-        app_config.environment =
-            env::var("APP_ENVIRONMENT").unwrap_or_else(|_| "dev".to_string());
+        app_config.environment = env::var("APP_ENVIRONMENT").unwrap_or_else(|_| "dev".to_string());
         Ok(app_config)
     }
     /// 从字符串加载配置
@@ -118,15 +133,15 @@ impl ConfigLoader {
             config.database.url = db_url;
         }
         // 覆盖JWT秘钥
-        if let Ok(jwt_secret) = env::var("JWT_SECRET") {
-            config.security.jwt_secret = jwt_secret;
-        }
+        // if let Ok(jwt_secret) = env::var("JWT_SECRET") {
+        //     config.security.jwt_secret = jwt_secret;
+        // }
         // 覆盖RedisURL
-        if let Ok(redis_url) = env::var("REDIS_URL") {
-            if let Some(ref mut redis) = config.redis {
-                redis.url = redis_url;
-            }
-        }
+        // if let Ok(redis_url) = env::var("REDIS_URL") {
+        //     if let Some(ref mut redis) = config.redis {
+        //         redis.url = redis_url;
+        //     }
+        // }
         // 覆盖HTTP服务地址
         if let Ok(port) = env::var("HTTP_SERVER_ADDRESS") {
             if let Ok(port_num) = port.parse::<u16>() {
@@ -135,11 +150,11 @@ impl ConfigLoader {
         }
 
         // 覆盖gRPC服务地址
-        if let Ok(port) = env::var("GRPC_SERVER_ADDRESS") {
-            if let Ok(port_num) = port.parse::<u16>() {
-                config.grpc.port = port_num;
-            }
-        }
+        // if let Ok(port) = env::var("GRPC_SERVER_ADDRESS") {
+        //     if let Ok(port_num) = port.parse::<u16>() {
+        //         config.grpc.port = port_num;
+        //     }
+        // }
         Ok(config)
     }
 

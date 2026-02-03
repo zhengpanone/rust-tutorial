@@ -17,8 +17,6 @@ use std::{
     time::{Duration, Instant},
 };
 use tracing::{Span, debug, error, info, warn};
-use tracing::{Level, Span, debug, error, info, warn};
-use utoipa::openapi::security::Http;
 use uuid::Uuid;
 
 /// 请求日志配置

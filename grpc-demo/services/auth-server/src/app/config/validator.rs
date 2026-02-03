@@ -3,8 +3,6 @@ use super::constants::*;
 use super::error::ConfigError;
 use crate::app::config::config::AppConfig;
 use std::path::Path;
-use url::Url;
-use validator::Validate;
 
 /// 配置验证器
 pub struct ConfigValidator;
@@ -128,12 +126,12 @@ impl ConfigValidator {
             Self::validate_redis_url(&redis.url)?;
         }
 
-        // 验证RabbitMQ URL
-        if let Some(rabbitmq) = &config.rabbitmq {
-            if rabbitmq.enabled {
-                Self::validate_rabbitmq_url(&rabbitmq.url)?;
-            }
-        }
+        //  验证RabbitMQ URL
+        // if let Some(message_queue) = &config.message_queue {
+        //     if message_queue.enabled {
+        //         Self::validate_rabbitmq_url(&message_queue.connection.url)?;
+        //     }
+        // }
 
         Ok(())
     }
