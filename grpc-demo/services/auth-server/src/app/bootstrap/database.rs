@@ -1,9 +1,8 @@
 // src/app/bootstrap/database.rs
 
 use crate::app::config::config::DatabaseConfig;
-use crate::app::state::AppState;
-use common::error::{AppError, AppResult};
-use futures::TryFutureExt;
+
+use common::error::AppResult;
 use sqlx::PgPool;
 use sqlx::postgres::PgPoolOptions;
 use tracing::{error, info};

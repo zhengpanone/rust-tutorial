@@ -1,16 +1,39 @@
 // src/app/config/config.rs
+
+pub(crate) use super::{database::DatabaseConfig, server::ServerConfig};
 use crate::app::config::error::ConfigError;
+pub use crate::app::config::security::SecurityConfig;
 use crate::app::config::validator::ConfigValidator;
-use jsonwebtoken::Algorithm;
+use anyhow::Context;
+use common::error::AppError;
+use config::{Config, Environment, File, FileFormat};
+use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
+use std::path::{Path, PathBuf};
+use tracing::{debug, info};
 use utoipa::ToSchema;
 use validator::Validate;
 
 /// 应用配置
-#[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, Validate)]
 pub struct AppConfig {
+    /// 应用名称
+    pub name: String,
+
+    /// 应用版本
+    pub version: String,
+
     #[validate(length(min = 1))]
     pub environment: String,
+
+    /// 配置文件路径
+    #[serde(skip)]
+    pub config_path: PathBuf,
+
+    /// 配置目录
+    #[serde(skip)]
+    pub config_dir: PathBuf,
+
     pub server: ServerConfig,
     pub database: DatabaseConfig,
     pub redis: Option<RedisConfig>,
@@ -24,6 +47,86 @@ pub struct AppConfig {
 }
 
 impl AppConfig {
+    /// 加载应用配置
+    pub fn load() -> Result<Self, AppError> {
+        info!("Loading application  configuration ");
+        // 确定配置文件路径
+        let config_paths = determine_config_paths();
+
+        // 创建配置构建器
+        let mut builder = Config::builder();
+
+        // 添加默认配置
+        builder = builder.add_source(
+            File::from_str(
+                include_str!("../../../config/default.toml"),
+                FileFormat::Toml,
+            )
+            .required(false),
+        );
+
+        // 添加环境特定的配置文件
+        for path in config_paths.iter().rev() {
+            if path.exists() {
+                info!("📁 Loading configuration file: {}", path.display());
+                builder = builder.add_source(File::from(path.clone()).required(false));
+            } else {
+                debug!("📁 Configuration file not found: {}", path.display());
+            }
+        }
+
+        // 添加环境变量
+        builder = builder.add_source(
+            Environment::with_prefix("APP")
+                .separator("__")
+                .list_separator(",")
+                .try_parsing(true),
+        );
+
+        // 添加命令行参数
+        #[cfg(feature = "clap")]
+        {
+            builder =
+                builder.add_source(config::Environment::with_prefix("APP").prefix_separator("_"));
+        }
+
+        // 构建配置
+        let config = builder
+            .build()
+            .with_context(|| "Failed to build configuration")
+            .unwrap();
+
+        // 反序列化配置
+        let mut app_config: Self = config
+            .try_deserialize()
+            .with_context(|| "Failed to deserialize configuration")
+            .unwrap();
+
+        // 设置配置路径
+        if let Some(first_path) = config_paths.iter().find(|p| p.exists()) {
+            app_config.config_path = first_path.clone();
+            app_config.config_dir = first_path
+                .parent()
+                .unwrap_or_else(|| Path::new("."))
+                .to_path_buf();
+        }
+
+        // 创建必要的目录
+        // create_necessary_directories(&app_config)?;
+
+        // 验证配置
+        app_config
+            .validate()
+            .map_err(|e| anyhow::anyhow!("Configuration validation failed: {}", e))
+            .unwrap();
+
+        // 记录加载的配置
+        // log_configuration(&app_config);
+
+        info!("✅ Configuration loaded successfully");
+        Ok(app_config)
+    }
+
     /// 统一验证入口
     ///
     /// 执行两阶段验证：
@@ -55,51 +158,61 @@ impl AppConfig {
     }
 }
 
-/// 服务器配置
-#[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
-pub struct ServerConfig {
+fn determine_config_paths() -> Vec<PathBuf> {
+    let mut paths = Vec::new();
 
-    /// 是否启用OpenAPI
-    pub enable_openapi: bool,
+    // 1. 从环境变量中获取配置路径
+    if let Ok(env_path) = std::env::var("APP_CONFIG_PATH") {
+        paths.push(PathBuf::from(env_path));
+    }
+    // 2. 从命令参数获取配置路径
+    #[cfg(feature = "clap")]
+    {
+        use clap::Parser;
+        struct Args {
+            #[arg(long, value = "FILE")]
+            config: Option<PathBuf>,
+        }
 
-    /// 是否启用监控
-    pub enable_metrics: bool,
-    /// 是否启用
-    pub enable_http: bool,
-    /// 主机地址
-    #[validate(length(min = 1, message = "主机地址不能为空"))]
-    pub host: String,
-    /// 端口
-    #[validate(range(min = 1, max = 65535))]
-    pub port: u16,
+        if let Ok(args) = Args::try_parse() {
+            if let Some(config_path) = args.config {
+                paths.push(config_path);
+            }
+        }
+    }
+    // 3. 从当前工作目录中获取
+    paths.push(PathBuf::from("config/default.toml"));
+    // 4. 从环境特定的配置文件获取
+    if let Ok(env) = std::env::var("APP_ENVIRONMENT") {
+        let env_config_path = format!("config/{}.toml", env.to_lowercase());
+        paths.push(PathBuf::from(env_config_path));
 
-    /// 是否启用CORS
-    pub enable_cors: bool,
+        // 本地环境配置
+        let local_env_config_path = format!("config/{}.local.toml", env.to_lowercase());
+        paths.push(PathBuf::from(local_env_config_path));
+    }
+    // 5. 本地配置文件(开发使用)
+    paths.push(PathBuf::from("config/local.toml"));
 
-    /// CORS允许的源
-    pub cors_origins: Vec<String>,
+    // 6. 从系统配置目录获取
+    if let Some(proj_dirs) = ProjectDirs::from("com", "microservice", "manager") {
+        let sys_config_path = proj_dirs.config_dir().join("config.toml");
+        paths.push(sys_config_path);
+    }
+    // 7. 用户主目录配置
+    if let Some(home_dir) = dirs_next::home_dir() {
+        let home_config_path = home_dir.join(".microservice-manager/config.toml");
+        paths.push(home_config_path);
+    }
 
-    /// 请求超时时间(秒)
-    #[validate(range(min = 1, max = 300, message = "请求超时时间必须在1-300秒之间"))]
-    pub request_timeout_secs: u64,
+    // 8. 内嵌默认配置
+    paths.push(PathBuf::from("default.toml"));
 
-    /// 请求体大小限制
-    #[validate(range(
-        min = 1024,
-        max = 104857600,
-        message = "请求体大小限制必须在1KB-100MB之间"
-    ))] // 1KB- 100MB
-    pub body_limit: usize,
-
-    /// 是否启用健康检查
-    pub enable_health_check: bool,
-
-    /// 健康检查端口
-    #[validate(range(min = 1, max = 65535, message = "健康检查端口必须在1-65535之间"))]
-    pub health_check_port: u16,
-
-    /// 是否启用混合模式
-    pub enable_hybrid: bool,
+    info!("Config file search paths:");
+    for (i, path) in paths.iter().enumerate() {
+        info!(" {}. {}", i + 1, path.display());
+    }
+    paths
 }
 
 /// gRPC配置
@@ -155,41 +268,6 @@ pub struct GrpcConfig {
     pub http2_keepalive_timeout_seconds: u64,
 }
 
-/// 数据库配置
-#[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
-pub struct DatabaseConfig {
-    /// 数据库URL
-    #[validate(length(min = 1), url)]
-    pub url: String,
-
-    /// 最大连接数
-    #[validate(range(min = 1, max = 100))]
-    pub max_connections: u32,
-
-    /// 最小连接数
-    #[validate(range(min = 0, max = 50))]
-    pub min_connections: u32,
-
-    /// 获取连接超时时间（秒）
-    #[validate(range(min = 1, max = 60))]
-    pub acquire_timeout_secs: u64,
-
-    /// 连接空闲超时时间（秒）
-    pub idle_timeout_secs: u64,
-
-    /// 连接最大生命周期（秒）
-    pub max_lifetime_secs: u64,
-
-    /// 是否运行迁移
-    pub run_migrations: bool,
-
-    /// 是否启用连接池健康检查
-    pub enable_pool_health_check: bool,
-
-    /// 健康检查间隔（秒）
-    pub health_check_interval_secs: u64,
-}
-
 /// Redis配置
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
 pub struct RedisConfig {
@@ -206,17 +284,6 @@ pub struct RedisConfig {
 
     /// 是否启用集群
     pub enable_cluster: bool,
-}
-
-impl Default for RedisConfig {
-    fn default() -> Self {
-        Self {
-            url: "redis://127.0.0.1:6379".to_string(),
-            pool_size: 10,
-            default_ttl_secs: 10,
-            enable_cluster: false,
-        }
-    }
 }
 
 /// RabbitMQ配置
@@ -266,26 +333,6 @@ pub struct LogConfig {
     pub retention_days: u32,
 }
 
-/// 安全配置
-#[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
-pub struct SecurityConfig {
-    /// JWT密钥
-    #[validate(length(min = 32))]
-    pub jwt_secret: String,
-
-    /// JWT过期时间（分钟）
-    #[validate(range(min = 1, max = 1440))]
-    pub jwt_expiry_minutes: u64,
-
-    /// 刷新令牌过期时间（天）
-    #[validate(range(min = 1, max = 30))]
-    pub refresh_token_expiry_days: u64,
-
-    /// 密码哈希成本
-    #[validate(range(min = 8, max = 16))]
-    pub password_hash_cost: u32,
-}
-
 /// 限流配置
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
 pub struct RateLimitConfig {
@@ -314,3 +361,82 @@ pub struct ConfigSummary {
     pub config_files_count: usize,
     pub env_vars_count: usize,
 }
+
+impl Default for AppConfig {
+    fn default() -> Self {
+        Self {
+            name: "Microservice Manager".to_string(),
+            version: env!("CARGO_PKG_VERSION").to_string(),
+            environment: "development".to_string(),
+            config_path: PathBuf::from("config/default.toml"),
+            config_dir: PathBuf::from("config"),
+            server: ServerConfig::default(),
+            security: SecurityConfig::default(),
+            database: DatabaseConfig::default(),
+            logging: LogConfig::default(),
+            redis: Some(RedisConfig::default()),
+            rate_limit: RateLimitConfig::default(),
+            grpc: GrpcConfig::default(),
+            rabbitmq: None,
+        }
+    }
+}
+
+impl Default for RedisConfig {
+    fn default() -> Self {
+        Self {
+            url: "redis://127.0.0.1:6379".to_string(),
+            pool_size: 10,
+            default_ttl_secs: 10,
+            enable_cluster: false,
+        }
+    }
+}
+
+impl Default for RateLimitConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            requests_per_minute: 0,
+            burst_size: 0,
+            skip_authentication: false,
+        }
+    }
+}
+
+impl Default for LogConfig {
+    fn default() -> Self {
+        Self {
+            log_level: "".to_string(),
+            log_dir: "".to_string(),
+            enable_json_format: false,
+            enable_file_logging: false,
+            enable_console_logging: false,
+            retention_days: 0,
+        }
+    }
+}
+
+impl Default for GrpcConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            host: "".to_string(),
+            port: 0,
+            address: "".to_string(),
+            enable_reflection: false,
+            enable_tls: false,
+            tls_cert_path: None,
+            tls_key_path: None,
+            max_concurrent_streams: 0,
+            initial_stream_window_size: 0,
+            initial_connection_window_size: 0,
+            tcp_keepalive_seconds: 0,
+            tcp_nodelay: false,
+            http2_keepalive_interval_seconds: 0,
+            http2_keepalive_timeout_seconds: 0,
+        }
+    }
+}
+
+// TODO: 实现默认值

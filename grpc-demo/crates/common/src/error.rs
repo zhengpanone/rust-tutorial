@@ -45,6 +45,10 @@ pub enum AppError {
     #[error("Cache error: {0}")]
     Cache(String),
 
+    /// 配置错误
+    #[error("配置错误: {0}")]
+    ConfigError(String),
+
     /// 网络错误
     #[error("网络错误: {0}")]
     Network(String),
@@ -126,6 +130,7 @@ impl AppError {
             AppError::BusinessRule(_) => "BUSINESS_RULE_VIOLATION",
             AppError::Database(_) => "DATABASE_ERROR",
             AppError::Cache(_) => "CACHE_ERROR",
+            AppError::ConfigError(_) => "CONFIG_ERROR",
             AppError::Network(_) => "NETWORK_ERROR",
             AppError::ExternalService(_) => "EXTERNAL_SERVICE_ERROR",
             AppError::RateLimit(_) => "RATE_LIMIT_EXCEEDED",
@@ -311,6 +316,11 @@ impl From<std::io::Error> for AppError {
     }
 }
 
+impl From<config::ConfigError> for AppError {
+    fn from(err: config::ConfigError) -> Self {
+        Self::Internal(err.to_string())
+    }
+}
 
 /// 错误严重级别
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]

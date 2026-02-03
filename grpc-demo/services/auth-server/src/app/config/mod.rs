@@ -3,8 +3,11 @@ pub mod config;
 pub mod constants;
 pub mod error;
 pub mod loader;
+pub mod security;
 pub mod summary;
 pub mod validator;
+mod server;
+mod database;
 
 #[cfg(test)]
 mod tests {
@@ -15,7 +18,7 @@ mod tests {
     #[test]
     fn test_config_usage() {
         // 加载配置
-        let config:AppConfig = ConfigLoader::load_and_validate().expect("加载配置失败");
+        let config: AppConfig = ConfigLoader::load_and_validate().expect("加载配置失败");
         println!("{}", config.environment);
 
         // 单独加载和验证

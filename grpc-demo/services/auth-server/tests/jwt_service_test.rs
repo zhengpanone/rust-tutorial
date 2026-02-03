@@ -9,12 +9,12 @@ mod tests {
 
     async fn test_jwt_service_init() {
         // 创建测试配置
-        let config = SecurityConfig {
-            jwt_secret: "test-secret-key-for-testing-only-change-in-production".to_string(),
-            jwt_expiry_minutes: 5,
-            refresh_token_expiry_days: 1,
-            password_hash_cost: 10,
-        };
+        // let config = SecurityConfig {
+        //     jwt_secret: "test-secret-key-for-testing-only-change-in-production".to_string(),
+        //     jwt_expiry_minutes: 5,
+        //     refresh_token_expiry_days: 1,
+        //     password_hash_cost: 10,
+        // };
 
         // let database_pool = init_database(&config.database);
         // let services = InfrastructureServices {
