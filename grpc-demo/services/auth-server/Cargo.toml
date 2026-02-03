@@ -61,6 +61,7 @@ validator-ext = {path = "../../crates/validator-ext"}
 dashmap = "6.1.0"
 directories = "6.0.0"
 dirs-next = "2.0.0"
+dashmap = "6.1.0"
 
 
 [dev-dependencies]

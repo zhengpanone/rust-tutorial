@@ -17,6 +17,8 @@ use std::{
     time::{Duration, Instant},
 };
 use tracing::{Span, debug, error, info, warn};
+use tracing::{Level, Span, debug, error, info, warn};
+use utoipa::openapi::security::Http;
 use uuid::Uuid;
 
 /// 请求日志配置
@@ -105,7 +107,7 @@ pub async fn request_logger(
     State(state): State<Arc<AppState>>,
     request: Request,
     next: Next,
-) -> Response<Body> {
+) -> Response {
     // 获取
     let config = get_logger_config(&state);
     // 如果未启用，则跳过
@@ -206,12 +208,7 @@ pub async fn request_logger(
         log_slow_request(&request_id, &method, &uri, duration, &config);
     }
 
-    // 记录指标
-    record_metrics(&state, &method, &uri, status, duration);
-
-    // 记录审计日志
-    record_audit_log(&state, &request_log, &response_log, request_body.as_deref());
-
+    // TODO
     response
 }
 
