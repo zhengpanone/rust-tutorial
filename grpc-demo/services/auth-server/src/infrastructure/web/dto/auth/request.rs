@@ -206,7 +206,7 @@ fn validate_password_format(password: &str) -> Result<(), ValidationError> {
     Ok(())
 }
 
-fn validate_username(username: &str) -> Result<(), ValidationError> {
+pub fn validate_username(username: &str) -> Result<(), ValidationError> {
     static USERNAME_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"^[a-zA-Z0-9_]{3,50}$").unwrap());
     if !USERNAME_REGEX.is_match(username) {
         return Err(ValidationError::new("invalid username format")
@@ -233,7 +233,7 @@ fn validate_username(username: &str) -> Result<(), ValidationError> {
     Ok(())
 }
 
-fn validate_phone(phone: &str) -> Result<(), ValidationError> {
+pub fn validate_phone(phone: &str) -> Result<(), ValidationError> {
     if phone.is_empty() {
         return Ok(()); // 手机号可选
     }
@@ -248,7 +248,7 @@ fn validate_phone(phone: &str) -> Result<(), ValidationError> {
     Ok(())
 }
 
-fn validate_password_strength(password: &str) -> Result<(), ValidationError> {
+pub fn validate_password_strength(password: &str) -> Result<(), ValidationError> {
     if password.len() < 6 {
         return Err(ValidationError::new("password too short").with_message(Cow::from("密码太短")));
     }

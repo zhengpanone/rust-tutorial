@@ -1,5 +1,8 @@
-use axum::http::StatusCode;
+use crate::web::response::api_error::ApiError;
+use axum::Json;
+use axum::http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fmt::Formatter;
@@ -99,6 +102,9 @@ pub enum AppError {
 
     #[error("Password hashing error: {0}")]
     Hashing(String),
+
+    #[error("参数错误: {0}")]
+    InvalidArgument(String),
 }
 
 impl AppError {
@@ -144,6 +150,7 @@ impl AppError {
             AppError::PayloadTooLarge(_) => "PAYLOAD_TOO_LARGE",
             AppError::MethodNotAllowed(_) => "METHOD_NOT_ALLOWED",
             AppError::Hashing(_) => "HASHING_ERROR",
+            AppError::InvalidArgument(_) => "INVALID_ARGUMENT",
         }
     }
 
@@ -251,23 +258,51 @@ impl AppError {
             error!("{}", log_message)
         }
     }
+
+    fn build_headers(&self) -> HeaderMap {
+        let mut headers = HeaderMap::new();
+
+        // 添加错误相关的响应头
+        headers.insert(
+            HeaderName::from_static("x-error-code"),
+            HeaderValue::from_str(self.error_code()).unwrap_or(HeaderValue::from_static("UNKNOWN")),
+        );
+        headers.insert(
+            HeaderName::from_static("x-error-severity"),
+            HeaderValue::from_str(self.severity().to_string().as_str())
+                .unwrap_or(HeaderValue::from_static("INFO")),
+        );
+        if self.status_code().is_server_error() {
+            headers.insert(
+                HeaderName::from_static("retry-after"),
+                HeaderValue::from_static("30"),
+            );
+        }
+        headers
+    }
 }
 
 /// 实现 IntoResponse 支持 Axum HTTP 响应
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         // 记录错误日志
-        // self.log(None,None);
-        // let status = self.status_code();
-        // let headers = self.build_headers();
+        self.log(None, None);
+        let status = self.status_code();
+        let headers = self.build_headers();
         //
-        // let api_error = ApiError {
-        //     error_type: self.error_data(),
-        //     error_message: self.to_string(),
-        //     error_code: self.error_code(),
-        //     error_severity: self.severity().to_string(),
-        // };
-        todo!()
+        let api_error = ApiError {
+            code: self.error_code().to_string(),
+            message: self.user_message(),
+            details: Some(self.to_string()),
+            request_id: None,
+            timestamp: Utc::now(),
+            validation_errors: None,
+            stack_trace: None,
+            documentation_url: None,
+            suggestion: None,
+            original_error: None,
+        };
+        (status, headers, Json(api_error)).into_response()
     }
 }
 
@@ -318,6 +353,12 @@ impl From<std::io::Error> for AppError {
 
 impl From<config::ConfigError> for AppError {
     fn from(err: config::ConfigError) -> Self {
+        Self::Internal(err.to_string())
+    }
+}
+
+impl From<anyhow::Error> for AppError {
+    fn from(err: anyhow::Error) -> Self {
         Self::Internal(err.to_string())
     }
 }

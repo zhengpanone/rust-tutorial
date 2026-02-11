@@ -11,7 +11,7 @@ pub fn configure_routes() -> Router<Arc<AppState>> {
     let router = Router::new()
         // 公共路由(无需认证)
         .merge(config_public_routes());
-    todo!()
+    router
 }
 
 /// 配置公共路由(无需认证)
@@ -41,7 +41,6 @@ fn config_public_routes() -> Router<Arc<AppState>> {
 fn configure_auth_routes() -> Router<Arc<AppState>> {
     Router::new()
         .route("/auth/logout", post(auth_handler::logout))
-        .route("/auth/me", get(auth_handler::get_current_user))
         .route("/auth/me", put(auth_handler::update_current_user))
         .route("/auth/change-password", post(auth_handler::change_password))
         .route("/auth/sessions", get(auth_handler::get_user_sessions))

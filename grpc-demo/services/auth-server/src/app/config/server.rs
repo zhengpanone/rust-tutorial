@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use validator::Validate;
+use crate::app::config::cors::CorsConfig;
 
 /// 服务器配置
 #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
@@ -21,9 +22,8 @@ pub struct ServerConfig {
 
     /// 是否启用CORS
     pub enable_cors: bool,
+    pub cors: Option<CorsConfig>,
 
-    /// CORS允许的源
-    pub cors_origins: Vec<String>,
 
     /// 请求超时时间(秒)
     #[validate(range(min = 1, max = 300, message = "请求超时时间必须在1-300秒之间"))]
@@ -55,7 +55,7 @@ impl Default for ServerConfig {
             port: 8080,
             enable_http: true,
             enable_cors: true,
-            cors_origins: vec![],
+            cors: None,
             request_timeout_secs: 10,
             enable_openapi: true,
             enable_health_check: true,

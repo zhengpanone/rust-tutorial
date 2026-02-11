@@ -7,20 +7,20 @@
 // 重新导出，方便使用
 
 pub mod common {
-    tonic::include_proto!("common");
+    tonic::include_proto!("microservice.common");
 }
 
 pub mod hello {
-    tonic::include_proto!("hello");
+    tonic::include_proto!("microservice.hello");
 }
 pub mod user {
-    tonic::include_proto!("user");
+    tonic::include_proto!("microservice.user");
     // include!(concat!(env!("OUT_DIR"), "/user_handler"));
 }
 
 pub mod product {
-    tonic::include_proto!("product");
+    tonic::include_proto!("microservice.product");
 }
 
 // ✅ 给 Reflection 使用
-pub const FILE_DESCRIPTOR_SET: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/descriptor.bin"));
+pub const FILE_DESCRIPTOR_SET: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/grpc_descriptor.bin"));

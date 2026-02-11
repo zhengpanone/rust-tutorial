@@ -1,0 +1,4 @@
+auth-server.log.*
+logs/
+*.log
+target/

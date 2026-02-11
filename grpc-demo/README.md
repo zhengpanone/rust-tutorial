@@ -25,6 +25,8 @@ cargo run -p user-server
 
 # 使用 cargo watch
 cargo watch -x 'run -p auth-server'
+cargo watch -x 'run -p auth-server' --ignore 'auth-server.log.*' --ignore 'logs'
+
 
 cargo watch -x 'run --package auth-server'
 cargo watch -w user-server -x 'run'
@@ -34,7 +36,68 @@ cargo watch -x 'clean -p auth-server' -x 'run -p auth-server'
 # 验证
 grpcurl -plaintext 127.0.0.1:50051 list
 ```
+# 项目结构
 
+```text
+microservice-manager/
+├── src/
+│   ├── main.rs                          # 应用入口
+│   ├── lib.rs                          # 库入口
+│   │
+│   ├── app/                            # 应用层
+│   │   ├── bootstrap/                  # 应用引导
+│   │   ├── config/                     # 配置管理
+│   │   ├── state/                      # 应用状态
+│   │   ├── middleware/                 # 中间件
+│   │   └── error/                      # 应用错误
+│   │
+│   ├── api/                            # API层 (HTTP接口)
+│   │   ├── http/                      # HTTP API
+│   │   │   ├── v1/                         # API版本1
+│   │   │   │   ├── mod.rs
+│   │   │   │   ├── users/                  # 用户相关接口
+│   │   │   │   ├── auth/                   # 认证相关接口
+│   │   │   │   ├── system/                 # 系统管理接口
+│   │   │   │   └── health/                 # 健康检查接口
+│   │   ├── grpc/                      # gRPC API
+│   │   │   ├── generated/            # 生成的代码
+│   │   │   ├── services/             # gRPC服务实现
+│   │   │   ├── client/               # gRPC客户端
+│   │   │   ├── middleware/
+│   │   │   ├── converter/
+│   │   │   └── server.rs
+│   │   │
+│   │   ├── middleware/                 # API中间件
+│   │   ├── dto/                        # API数据传输对象
+│   │   ├── response/                   # API响应格式
+│   │   └── error/                      # API错误处理
+│   │
+│   ├── domain/                         # 领域层
+│   │   ├── common/                     # 公共领域
+│   │   ├── identity/                   # 身份认证子域
+│   │   ├── system/                     # 系统管理子域
+│   │   └── message/                    # 消息子域
+│   │
+│   ├── application/                    # 应用服务层
+│   │   ├── services/                   # 应用服务
+│   │   ├── handlers/                   # 领域事件处理程序
+│   │   └── projections/                # 查询投影
+│   │
+│   ├── infrastructure/                 # 基础设施层
+│   │   ├── persistence/                # 持久化
+│   │   ├── web/                        # Web框架集成
+│   │   ├── grpc/                       # gRPC框架
+│   │   ├── cache/                      # 缓存
+│   │   ├── message_queue/              # 消息队列
+│   │   └── external/                   # 外部服务
+│   │
+│   └── shared/                         # 共享内核
+│       ├── utils/                      # 工具类
+│       ├── validation/                 # 验证
+│       ├── security/                   # 安全
+│       └── logging/                    # 日志
+
+```
 
 # TODO
 

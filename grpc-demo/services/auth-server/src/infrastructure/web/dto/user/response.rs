@@ -5,7 +5,7 @@ use uuid::Uuid;
 use common::security::jwt::claim::UserStatus;
 
 /// 用户响应
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema,Default)]
 pub struct UserResponse {
     /// 用户ID
     pub id: Uuid,

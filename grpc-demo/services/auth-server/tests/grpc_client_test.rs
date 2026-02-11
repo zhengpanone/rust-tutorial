@@ -17,24 +17,24 @@ mod grpc_client_test {
         //
         // let user_grpc = UserServiceGrpcClient::new(channel);
         // 2 构造请求
-        let request = GetUserRequest {
-            id: "1".to_string(),
-        };
-        // 3 调用 RPC
-        let response = client
-            .get_user(request)
-            .await
-            .expect("User not found!")
-            .into_inner();
-
-        // 4 处理响应
-        if let Some(user) = response.user {
-            println!("User info:");
-            println!("  id       = {}", user.id);
-            println!("  username = {}", user.username);
-            println!("  email    = {}", user.email);
-        } else {
-            println!("User not found");
-        }
+        // let request = GetUserRequest {
+        //     id: "1".to_string(),
+        // };
+        // // 3 调用 RPC
+        // let response = client
+        //     .get_user(request)
+        //     .await
+        //     .expect("User not found!")
+        //     .into_inner();
+        //
+        // // 4 处理响应
+        // if let Some(user) = response.user {
+        //     println!("User info:");
+        //     println!("  id       = {}", user.id);
+        //     println!("  username = {}", user.username);
+        //     println!("  email    = {}", user.email);
+        // } else {
+        //     println!("User not found");
+        // }
     }
 }

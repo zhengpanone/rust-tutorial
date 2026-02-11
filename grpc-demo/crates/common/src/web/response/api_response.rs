@@ -1,8 +1,6 @@
-use std::collections::HashMap;
-use std::fmt;
-use std::fmt::Formatter;
 // src/web/response/api_response.rs
-use crate::error::AppError;
+
+use crate::error::{AppError, AppResult};
 use crate::web::pagination::{PaginatedData, PaginationInfo};
 use crate::web::response::api_error::{ApiError, convert_validate_errors_to_details};
 use axum::http::HeaderValue;
@@ -14,6 +12,9 @@ use axum::{
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
+use std::collections::HashMap;
+use std::fmt;
+use std::fmt::Formatter;
 use utoipa::ToSchema;
 use validator::ValidationErrors;
 
@@ -50,6 +51,7 @@ pub struct ApiResponse<T = ()> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub meta: Option<serde_json::Value>,
 }
+
 /// 分页信息
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
@@ -124,14 +126,14 @@ impl<T> ApiResponse<T> {
     }
 
     /// 创建成功响应（无数据）
-    pub fn success_empty() -> Self
+    pub fn success_empty<S: Into<String>>(message: S) -> Self
     where
         T: Default,
     {
         Self {
             success: true,
             code: "204".to_string(),
-            message: "没有数据".to_string(),
+            message: message.into(),
             data: None,
             error: None,
             pagination: None,
@@ -314,13 +316,33 @@ impl<T> ApiResponse<T> {
     }
 }
 
-impl<T: Serialize> IntoResponse for ApiResponse<T>
+// 为 ApiResponse 实现 From<AppResult<T>>
+impl<T> From<AppResult<T>> for ApiResponse<T>
+where
+    T: Serialize + Default + Send + Sync + 'static,
+{
+    fn from(result: AppResult<T>) -> Self {
+        match result {
+            Ok(data) => ApiResponse::success(data),
+            Err(err) => ApiResponse::from_app_error(err),
+        }
+    }
+}
+
+// 然后为 ApiResponse 实现 IntoResponse
+impl<T> IntoResponse for ApiResponse<T>
 where
     T: Serialize + Send + Sync + 'static,
 {
     fn into_response(self) -> Response {
         let status = if self.success {
-            StatusCode::OK
+            // 根据 code 确定状态码
+            match self.code.as_str() {
+                "200" => StatusCode::OK,
+                "201" => StatusCode::CREATED,
+                "204" => StatusCode::NO_CONTENT,
+                _ => StatusCode::OK, // 默认
+            }
         } else {
             // 从错误码解析状态码
             if let Some(ref error) = self.error {
@@ -392,13 +414,12 @@ where
             }
         }
 
-        (status, Json(self)).into_response()
-    }
-}
-
-impl<T> From<T> for ApiResponse<T> {
-    fn from(data: T) -> Self {
-        Self::success(data)
+        // 如果是 204 No Content，不应该有响应体
+        if status == StatusCode::NO_CONTENT {
+            status.into_response()
+        } else {
+            (status, Json(self)).into_response()
+        }
     }
 }
 

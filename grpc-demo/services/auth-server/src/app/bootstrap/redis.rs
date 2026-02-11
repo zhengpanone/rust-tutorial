@@ -1,7 +1,7 @@
 use crate::app::config::config::RedisConfig;
 use common::error::AppResult;
+use deadpool_redis::Config;
 use deadpool_redis::redis::AsyncCommands;
-use deadpool_redis::{Config, PoolConfig};
 use redis::Client as RedisClient;
 use std::sync::Arc;
 use tracing::{error, info, warn};

@@ -1,0 +1,426 @@
+// proto/proto/user.proto
+syntax = "proto3";
+
+package microservice.user;
+
+import "common/common.proto";
+import "google/protobuf/timestamp.proto";
+
+
+option go_package = "github.com/zhengpanone/microservice/grpc/user";
+option java_multiple_files = true;
+option java_package = "com.zhengpanone.microservice.grpc.user";
+
+// 用户服务
+service UserServiceGrpc{
+
+
+
+  // 创建用户
+  rpc CreateUser(CreateUserRequest) returns (UserResponse);
+
+  // 获取用户
+  rpc GetUser (GetUserRequest) returns (UserResponse) ;
+
+  // 获取多个用户
+  rpc GetUsers(GetUsersRequest) returns (GetUsersResponse);
+
+  rpc ListPageUser(ListUserRequest) returns (stream UserResponse);
+  // 更新用户
+  rpc UpdateUser(UpdateUserRequest) returns(UserResponse);
+
+  // 删除用户
+  rpc DeleteUser(DeleteUserRequest) returns(DeleteUserResponse);
+
+  // 搜索用户
+  rpc SearchUsers(SearchUsersRequest) returns (SearchUsersResponse);
+
+  // 获取用户统计
+  rpc GetUserStats(GetUserStatsRequest) returns (UserStatsResponse);
+
+  // 启用用户
+  rpc EnableUser(EnableUserRequest) returns (UserResponse);
+
+  // 禁用用户
+  rpc DisableUser(DisableUserRequest) returns (UserResponse);
+
+  // 锁定用户
+  rpc LockUser(LockUserRequest) returns (UserResponse);
+
+  // 解锁用户
+  rpc UnlockUser(UnlockUserRequest) returns (UserResponse);
+
+  // 分配角色
+  rpc AssignRole(AssignRoleRequest) returns (UserResponse);
+
+  // 移除角色
+  rpc RemoveRole(RemoveRoleRequest) returns (UserResponse);
+
+  // 分配权限
+  rpc AssignPermission(AssignPermissionRequest) returns (UserResponse);
+
+  // 移除权限
+  rpc RemovePermission(RemovePermissionRequest) returns (UserResponse);
+
+  // 验证邮箱
+  rpc VerifyEmail(VerifyEmailRequest) returns (UserResponse);
+
+  // 验证手机
+  rpc VerifyPhone(VerifyPhoneRequest) returns (UserResponse);
+
+  // 流式获取用户
+  rpc StreamUsers(StreamUsersRequest) returns (stream UserResponse);
+
+  // 批量创建用户
+  rpc BatchCreateUsers(stream CreateUserRequest) returns (BatchCreateUsersResponse);
+
+  // 双向流式用户操作
+  rpc BidirectionalStreamUsers(stream UserOperation) returns (stream UserResponse);
+}
+
+
+// 用户状态
+enum UserStatus {
+  USER_STATUS_UNSPECIFIED = 0;
+  USER_STATUS_PENDING = 1;      // 待激活
+  USER_STATUS_ACTIVE = 2;       // 活跃
+  USER_STATUS_INACTIVE = 3;     // 禁用
+  USER_STATUS_LOCKED = 4;       // 锁定
+  USER_STATUS_SUSPENDED = 5;    // 挂起
+  USER_STATUS_DELETED = 6;      // 已删除
+}
+
+message Address {
+  string street = 1;
+  string city = 2;
+  string country = 3;
+}
+
+message User{
+  string id = 1;
+  string username = 2;
+  string email = 3;
+  string full_name = 4;
+  string phone_number = 5;
+  UserRole role = 6;
+  map<string, string> metadata = 7;
+  repeated Address addresses = 8;
+  repeated string tags = 11;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 19;
+}
+
+
+message CreateUserRequest{
+  string username = 1;
+  string email = 2;
+  string display_name = 3;
+  string password = 4;
+  string phone = 5;
+  string avatar_url = 6;
+  repeated string roles = 7;
+  repeated string permissions = 8;
+  microservice.common.Metadata metadata = 9;
+  bool send_welcome_email = 10;
+  string timezone = 11;
+  string locale = 12;
+  bool require_email_verification = 13;
+  bool require_phone_verification = 14;
+  string source = 15;  // 注册来源: web, mobile, api, admin
+}
+
+enum UserRole {
+  GUEST = 0;
+  USER = 1;
+  ADMIN = 2;
+}
+
+
+
+
+// 获取用户请求
+message GetUserRequest{
+  oneof identifier {
+    string user_id = 1;
+    string username = 2;
+    string email = 3;
+    string phone = 4;
+  }
+  bool include_sensitive = 5;  // 是否包含敏感信息
+  repeated string fields = 6;  // 指定返回字段
+}
+
+// 获取多个用户请求
+message GetUsersRequest {
+  repeated string user_ids = 1;
+  microservice.common.Filter filter = 2;
+  microservice.common.PageRequest pagination = 3;
+  repeated string fields = 4;
+}
+
+// 更新用户请求
+message UpdateUserRequest{
+  //  optional microservice.common.TimeRange created_range = 4;  // 使用公共时间范围
+  //  repeated string tags = 5;
+  //  optional UserRole role = 6;
+  string user_id = 1;
+  string display_name = 2;
+  optional string email = 3;
+  string phone = 4;
+  string avatar_url = 5;
+  UserStatus status = 6;
+  bool email_verified = 7;
+  bool phone_verified = 8;
+  microservice.common.Metadata metadata = 9;
+  string timezone = 10;
+  string locale = 11;
+  string status_message = 12;
+  UpdateMask update_mask = 13;  // 字段更新掩码
+}
+
+// 字段更新掩码
+message UpdateMask {
+  repeated string paths = 1;
+}
+
+message ListUserRequest{
+  microservice.common.PageRequest page = 1;
+  optional string filter = 3;
+}
+
+
+// 删除用户请求
+message DeleteUserRequest{
+  string user_id = 1;
+  bool permanent = 2;  // 是否永久删除
+  string reason = 3;   // 删除原因
+}
+
+// 搜索用户请求
+message SearchUsersRequest {
+  string query = 1;
+  microservice.common.PageRequest pagination = 2;
+  repeated string fields = 3;
+  SearchScope scope = 4;
+}
+
+
+// 搜索范围
+enum SearchScope {
+  SEARCH_SCOPE_UNSPECIFIED = 0;
+  SEARCH_SCOPE_ALL = 1;
+  SEARCH_SCOPE_USERNAME = 2;
+  SEARCH_SCOPE_EMAIL = 3;
+  SEARCH_SCOPE_DISPLAY_NAME = 4;
+  SEARCH_SCOPE_PHONE = 5;
+}
+
+// 获取用户统计请求
+message GetUserStatsRequest {
+  microservice.common.Timestamp start_date = 1;
+  microservice.common.Timestamp end_date = 2;
+  UserStatus status = 3;
+  string role = 4;
+  StatsGroupBy group_by = 5;
+  repeated StatsMetric metrics = 6;
+}
+
+// 统计分组
+enum StatsGroupBy {
+  STATS_GROUP_BY_UNSPECIFIED = 0;
+  STATS_GROUP_BY_DAY = 1;
+  STATS_GROUP_BY_WEEK = 2;
+  STATS_GROUP_BY_MONTH = 3;
+  STATS_GROUP_BY_STATUS = 4;
+  STATS_GROUP_BY_ROLE = 5;
+  STATS_GROUP_BY_SOURCE = 6;
+}
+
+// 统计指标
+enum StatsMetric {
+  STATS_METRIC_UNSPECIFIED = 0;
+  STATS_METRIC_TOTAL_USERS = 1;
+  STATS_METRIC_NEW_USERS = 2;
+  STATS_METRIC_ACTIVE_USERS = 3;
+  STATS_METRIC_EMAIL_VERIFIED = 4;
+  STATS_METRIC_PHONE_VERIFIED = 5;
+  STATS_METRIC_LOGIN_COUNT = 6;
+  STATS_METRIC_FAILED_LOGIN_COUNT = 7;
+}
+
+// 启用/禁用用户请求
+message EnableUserRequest {
+  string user_id = 1;
+  string reason = 2;
+}
+
+message DisableUserRequest {
+  string user_id = 1;
+  string reason = 2;
+}
+
+// 锁定/解锁用户请求
+message LockUserRequest {
+  string user_id = 1;
+  string reason = 2;
+  uint32 duration_minutes = 3;  // 锁定时长（分钟），0表示永久
+}
+
+message UnlockUserRequest {
+  string user_id = 1;
+  string reason = 2;
+}
+
+// 角色/权限分配请求
+message AssignRoleRequest {
+  string user_id = 1;
+  string role = 2;
+  string reason = 3;
+  uint32 expires_at = 4;  // 过期时间戳
+}
+
+message RemoveRoleRequest {
+  string user_id = 1;
+  string role = 2;
+  string reason = 3;
+}
+
+message AssignPermissionRequest {
+  string user_id = 1;
+  string permission = 2;
+  string reason = 3;
+  uint32 expires_at = 4;  // 过期时间戳
+}
+
+message RemovePermissionRequest {
+  string user_id = 1;
+  string permission = 2;
+  string reason = 3;
+}
+
+// 验证请求
+message VerifyEmailRequest {
+  string user_id = 1;
+  string verification_code = 2;
+}
+
+message VerifyPhoneRequest {
+  string user_id = 1;
+  string verification_code = 2;
+}
+
+// 流式获取用户请求
+message StreamUsersRequest {
+  microservice.common.Filter filter = 1;
+  uint32 batch_size = 2;
+  repeated string fields = 3;
+  OrderBy order_by = 4;
+}
+
+// 排序字段
+message OrderBy {
+  string field = 1;
+  microservice.common.SortOrder order = 2;
+}
+
+// 批量创建响应
+message BatchCreateUsersResponse {
+  repeated User created_users = 1;
+  repeated BatchError errors = 2;
+  uint32 success_count = 3;
+  uint32 failure_count = 4;
+  microservice.common.Timestamp completed_at = 5;
+}
+
+// 批量错误
+message BatchError {
+  uint32 index = 1;
+  string error_code = 2;
+  string error_message = 3;
+  map<string, string> details = 4;
+}
+
+// 用户操作
+message UserOperation {
+  string operation_id = 1;
+  oneof operation {
+    CreateUserRequest create = 2;
+    UpdateUserRequest update = 3;
+    DeleteUserRequest delete = 4;
+  }
+  string client_id = 5;
+  microservice.common.Timestamp timestamp = 6;
+}
+
+// 响应消息
+message UserResponse {
+  User user = 1;
+  microservice.common.CommonResponse response = 2;
+  optional string error_message = 3;
+}
+
+
+message GetUsersResponse {
+  repeated User users = 1;
+  microservice.common.PageResponse pagination = 2;
+  microservice.common.CommonResponse response = 3;
+}
+
+message SearchUsersResponse {
+  repeated User users = 1;
+  microservice.common.PageResponse pagination = 2;
+  uint32 total_hits = 3;
+  microservice.common.CommonResponse response = 4;
+}
+
+message UserStatsResponse {
+  UserStats stats = 1;
+  microservice.common.CommonResponse response = 2;
+}
+
+// 用户统计
+message UserStats {
+  uint32 total_users = 1;
+  uint32 active_users = 2;
+  uint32 new_users_today = 3;
+  uint32 new_users_this_week = 4;
+  uint32 new_users_this_month = 5;
+  map<string, uint32> users_by_status = 6;
+  map<string, uint32> users_by_role = 7;
+  uint32 email_verified_count = 8;
+  uint32 phone_verified_count = 9;
+  double growth_rate = 10;
+  repeated TimeSeriesData time_series = 11;
+  repeated RoleStats role_stats = 12;
+  microservice.common.Timestamp generated_at = 13;
+}
+
+// 时间序列数据
+message TimeSeriesData {
+  string period = 1;
+  uint32 value = 2;
+  microservice.common.Timestamp start_time = 3;
+  microservice.common.Timestamp end_time = 4;
+}
+
+// 角色统计
+message RoleStats {
+  string role = 1;
+  uint32 user_count = 2;
+  uint32 active_user_count = 3;
+  uint32 new_users = 4;
+  double growth_rate = 5;
+}
+
+
+message DeleteUserResponse{
+  bool success = 1;
+  string message = 2;
+}
+
+
+
+
+
+
+

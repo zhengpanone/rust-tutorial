@@ -1,9 +1,7 @@
 use auth_server::app::bootstrap::AppBootstrap;
 use auth_server::app::config::config::AppConfig;
-use auth_server::app::config::error::ConfigErrorSeverity::Error;
-use tracing::info;
-use tracing::log::logger;
 use auth_server::app::config::loader::ConfigLoader;
+use tracing::info;
 
 // use crate::grpc::user::GrpcUserService;
 // use crate::router::create_router;
@@ -108,20 +106,12 @@ async fn main() -> anyhow::Result<()> {
     //     // let a = tokio::try_join!(grpc_server, http_server)?;
 
     // 1. 加载配置
-    // let config = AppConfig::load().expect("Failed to load config");
+    let _config = AppConfig::load().expect("Failed to load config");
     let config: AppConfig = ConfigLoader::load_and_validate().expect("加载配置失败");
     info!("config: {:?}", config);
-    let mut bootstrap = AppBootstrap::new(config);
+    // 2. 创建并运行启动器
+    let mut bootstrap = AppBootstrap::new(config).await;
     bootstrap.run().await.expect("Failed to run app");
-    // TODO
-    // let mut app = match AppBootstrap::new() {
-    //     Ok(app) => app,
-    //     Err(e) => {
-    //         eprintln!("Failed to create application: {:?}", e);
-    //         eprintln!("Error details: {:?}", e);
-    //         process::exit(1);
-    //     }
-    // };
 
     Ok(())
 }

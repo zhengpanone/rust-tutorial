@@ -1,0 +1,27 @@
+# 日志文件
+auth-server.log.*
+logs/
+*.log
+
+# Rust 构建产物
+target/
+Cargo.lock
+
+# IDE 和编辑器
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 环境变量
+.env
+.env.local
+.env.*.local
+
+# 操作系统
+.DS_Store
+Thumbs.db
+
+# 测试覆盖率
+*.profraw

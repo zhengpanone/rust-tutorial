@@ -1,2 +1,2 @@
-pub mod auth_app_impl;
-pub mod user_app_impl;
+pub mod auth_service_impl;
+pub mod user_service_impl;

@@ -1,0 +1,454 @@
+// proto/auth_service.proto
+syntax = "proto3";
+
+package microservice.auth;
+
+import "common/common.proto";
+import "user_service.proto";
+
+option go_package = "github.com/zhengpanone/microservice/grpc/auth";
+option java_multiple_files = true;
+option java_package = "com.zhengpanone.microservice.grpc.auth";
+
+// 认证服务
+service AuthService {
+  // 登录
+  rpc Login(LoginRequest) returns (AuthResponse);
+
+  // 注册
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+
+  // 登出
+  rpc Logout(LogoutRequest) returns (microservice.common.CommonResponse);
+
+  // 刷新令牌
+  rpc RefreshToken(RefreshTokenRequest) returns (AuthResponse);
+
+  // 验证令牌
+  rpc VerifyToken(VerifyTokenRequest) returns (VerifyTokenResponse);
+
+
+  // 获取用户会话
+  rpc GetUserSessions(GetUserSessionsRequest) returns (GetUserSessionsResponse);
+
+  // 吊销会话
+  rpc RevokeSession(RevokeSessionRequest) returns (microservice.common.CommonResponse);
+
+  // 吊销用户所有会话
+  rpc RevokeAllUserSessions(RevokeAllUserSessionsRequest) returns (microservice.common.CommonResponse);
+
+  // 忘记密码
+  rpc ForgotPassword(ForgotPasswordRequest) returns (microservice.common.CommonResponse);
+
+  // 重置密码
+  rpc ResetPassword(ResetPasswordRequest) returns (microservice.common.CommonResponse);
+
+  // 更改密码
+  rpc ChangePassword(ChangePasswordRequest) returns (microservice.common.CommonResponse);
+
+  // 多因素认证
+  rpc EnableMFA(EnableMFARequest) returns (EnableMFAResponse);
+  rpc DisableMFA(DisableMFARequest) returns (microservice.common.CommonResponse);
+  rpc VerifyMFA(VerifyMFARequest) returns (AuthResponse);
+
+  // 验证码
+  rpc GenerateCaptcha(GenerateCaptchaRequest) returns (GenerateCaptchaResponse);
+  rpc VerifyCaptcha(VerifyCaptchaRequest) returns (microservice.common.CommonResponse);
+
+  // 社交登录
+  rpc SocialLogin(SocialLoginRequest) returns (AuthResponse);
+  rpc LinkSocialAccount(LinkSocialAccountRequest) returns (microservice.common.CommonResponse);
+  rpc UnlinkSocialAccount(UnlinkSocialAccountRequest) returns (microservice.common.CommonResponse);
+
+  // 健康检查
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+// 登录请求
+message LoginRequest {
+  oneof identifier {
+    string username = 1;
+    string email = 2;
+    string phone = 3;
+  }
+  string password = 4;
+  string client_id = 5;
+  microservice.common.DeviceInfo device_info = 6;
+  bool remember_me = 7;
+  string mfa_code = 8;
+  string captcha_token = 9;
+  string captcha_value = 10;
+  map<string, string> metadata = 11;
+}
+
+// 注册请求
+message RegisterRequest {
+  string username = 1;
+  string email = 2;
+  string password = 3;
+  string confirm_password = 4;
+  string phone = 5;
+  string display_name = 6;
+  microservice.common.DeviceInfo device_info = 7;
+  bool auto_login = 8;
+  string timezone = 9;
+  string locale = 10;
+  string source = 11;
+  string referrer = 12;
+  string captcha_token = 13;
+  string captcha_value = 14;
+  map<string, string> metadata = 15;
+  bool accept_terms = 16;
+  bool subscribe_newsletter = 17;
+}
+
+// 登出请求
+message LogoutRequest {
+  string token = 1;
+  bool revoke_all = 2;
+  string reason = 3;
+  string client_id = 4;
+}
+
+// 刷新令牌请求
+message RefreshTokenRequest {
+  string refresh_token = 1;
+  string client_id = 2;
+  microservice.common.DeviceInfo device_info = 3;
+}
+
+// 验证令牌请求
+message VerifyTokenRequest {
+  string token = 1;
+  TokenType token_type = 2;
+  bool check_revocation = 3;
+  repeated string required_scopes = 4;
+  repeated string required_roles = 5;
+  repeated string required_permissions = 6;
+}
+
+// 令牌类型
+enum TokenType {
+  TOKEN_TYPE_UNSPECIFIED = 0;
+  TOKEN_TYPE_ACCESS = 1;
+  TOKEN_TYPE_REFRESH = 2;
+  TOKEN_TYPE_ID = 3;
+  TOKEN_TYPE_API_KEY = 4;
+}
+
+// 获取用户会话请求
+message GetUserSessionsRequest {
+  string user_id = 1;
+  bool active_only = 2;
+  microservice.common.PageRequest pagination = 3;
+  repeated string fields = 4;
+}
+
+// 吊销会话请求
+message RevokeSessionRequest {
+  string session_id = 1;
+  string reason = 2;
+  string client_id = 3;
+}
+
+// 吊销用户所有会话请求
+message RevokeAllUserSessionsRequest {
+  string user_id = 1;
+  string reason = 2;
+  bool exclude_current = 3;
+  string client_id = 4;
+}
+
+// 忘记密码请求
+message ForgotPasswordRequest {
+  oneof identifier {
+    string email = 1;
+    string phone = 2;
+    string username = 3;
+  }
+  string reset_url = 4;
+  uint32 expires_in_minutes = 5;
+  string client_id = 6;
+}
+
+// 重置密码请求
+message ResetPasswordRequest {
+  string token = 1;
+  string new_password = 2;
+  string confirm_password = 3;
+  string client_id = 4;
+  string verification_code = 5;
+}
+
+// 更改密码请求
+message ChangePasswordRequest {
+  string user_id = 1;
+  string current_password = 2;
+  string new_password = 3;
+  string confirm_password = 4;
+  string client_id = 5;
+  bool require_reauthentication = 6;
+}
+
+// 多因素认证请求
+message EnableMFARequest {
+  string user_id = 1;
+  MFAType mfa_type = 2;
+  string client_id = 3;
+  string device_name = 4;
+  map<string, string> metadata = 5;
+}
+
+message DisableMFARequest {
+  string user_id = 1;
+  string client_id = 2;
+  string verification_code = 3;
+  string backup_code = 4;
+}
+
+message VerifyMFARequest {
+  string user_id = 1;
+  string mfa_code = 2;
+  string client_id = 3;
+  MFAType mfa_type = 4;
+  bool remember_device = 5;
+}
+
+// 验证码请求
+message GenerateCaptchaRequest {
+  CaptchaType captcha_type = 1;
+  uint32 width = 2;
+  uint32 height = 3;
+  uint32 length = 4;
+  uint32 expires_in_seconds = 5;
+  string client_id = 6;
+}
+
+message VerifyCaptchaRequest {
+  string captcha_token = 1;
+  string captcha_value = 2;
+  string client_id = 3;
+}
+
+// 社交登录请求
+message SocialLoginRequest {
+  SocialProvider provider = 1;
+  string access_token = 2;
+  string id_token = 3;
+  string code = 4;
+  string redirect_uri = 5;
+  microservice.common.DeviceInfo device_info = 6;
+  bool link_account = 7;
+  string client_id = 8;
+  map<string, string> metadata = 9;
+}
+
+message LinkSocialAccountRequest {
+  string user_id = 1;
+  SocialProvider provider = 2;
+  string access_token = 3;
+  string id_token = 4;
+  string code = 5;
+  string redirect_uri = 6;
+  string client_id = 7;
+}
+
+message UnlinkSocialAccountRequest {
+  string user_id = 1;
+  SocialProvider provider = 2;
+  string client_id = 3;
+  bool require_reauthentication = 4;
+}
+
+// 健康检查请求
+message HealthCheckRequest {
+  string service = 1;
+  repeated string components = 2;
+  uint32 timeout_seconds = 3;
+}
+
+// 响应消息
+message AuthResponse {
+  microservice.user.User user = 1;
+  TokenPair tokens = 2;
+  bool requires_mfa = 3;
+  bool requires_captcha = 4;
+  microservice.common.CommonResponse response = 5;
+  SessionInfo session = 6;
+  map<string, string> metadata = 7;
+}
+
+message RegisterResponse {
+  microservice.user.User user = 1;
+  TokenPair tokens = 2;
+  bool email_verification_required = 3;
+  bool phone_verification_required = 4;
+  string verification_method = 5;
+  microservice.common.CommonResponse response = 6;
+  string welcome_message = 7;
+  map<string, string> next_steps = 8;
+}
+
+message VerifyTokenResponse {
+  TokenInfo token_info = 1;
+  microservice.user.User user = 2;
+  bool is_valid = 3;
+  string reason = 4;
+  microservice.common.CommonResponse response = 5;
+  map<string, string> metadata = 6;
+}
+
+message GetUserSessionsResponse {
+  repeated SessionInfo sessions = 1;
+  microservice.common.PageResponse pagination = 2;
+  uint32 total_active_sessions = 3;
+  microservice.common.CommonResponse response = 4;
+}
+
+message EnableMFAResponse {
+  MFAType mfa_type = 1;
+  string secret = 2;
+  string qr_code_url = 3;
+  repeated string backup_codes = 4;
+  string setup_url = 5;
+  string verification_url = 6;
+  string device_id = 7;
+  string device_name = 8;
+  microservice.common.CommonResponse response = 9;
+  map<string, string> metadata = 10;
+}
+
+message GenerateCaptchaResponse {
+  string captcha_token = 1;
+  string captcha_image = 2;  // base64编码的图片
+  string captcha_audio = 3;  // base64编码的音频
+  string captcha_text = 4;
+  string challenge = 5;
+  string algorithm = 6;
+  uint32 expires_at = 7;
+  microservice.common.CommonResponse response = 8;
+  map<string, string> metadata = 9;
+}
+
+message HealthCheckResponse {
+  HealthStatus status = 1;
+  repeated ComponentHealth components = 2;
+  microservice.common.Timestamp timestamp = 3;
+  uint32 uptime_seconds = 4;
+  string version = 5;
+  map<string, string> metadata = 6;
+  microservice.common.CommonResponse response = 7;
+}
+
+// 数据结构
+message TokenPair {
+  string access_token = 1;
+  string refresh_token = 2;
+  string token_type = 3;
+  uint32 expires_in = 4;
+  uint32 refresh_expires_in = 5;
+  repeated string scopes = 6;
+  string id_token = 7;
+  string session_state = 8;
+  map<string, string> metadata = 9;
+}
+
+message TokenInfo {
+  string jti = 1;
+  string sub = 2;
+  string iss = 3;
+  string aud = 4;
+  uint32 iat = 5;
+  uint32 exp = 6;
+  uint32 nbf = 7;
+  TokenType token_type = 8;
+  repeated string scopes = 9;
+  repeated string roles = 10;
+  repeated string permissions = 11;
+  string client_id = 12;
+  string device_id = 13;
+  string session_id = 14;
+  map<string, string> metadata = 15;
+}
+
+message SessionInfo {
+  string session_id = 1;
+  string user_id = 2;
+  string client_id = 3;
+  string device_id = 4;
+  string device_type = 5;
+  string user_agent = 6;
+  string ip_address = 7;
+  microservice.common.GeoLocation location = 8;
+  bool is_active = 9;
+  bool is_current = 10;
+  microservice.common.Timestamp created_at = 11;
+  microservice.common.Timestamp last_activity_at = 12;
+  microservice.common.Timestamp expires_at = 13;
+  string status = 14;
+  map<string, string> metadata = 15;
+  repeated string scopes = 16;
+  string token_jti = 17;
+  string session_type = 18;
+  uint32 activity_count = 19;
+}
+
+// 多因素认证类型
+enum MFAType {
+  MFA_TYPE_UNSPECIFIED = 0;
+  MFA_TYPE_TOTP = 1;      // 基于时间的一次性密码
+  MFA_TYPE_SMS = 2;       // 短信验证码
+  MFA_TYPE_EMAIL = 3;     // 邮箱验证码
+  MFA_TYPE_PUSH = 4;      // 推送通知
+  MFA_TYPE_BIO = 5;       // 生物识别
+  MFA_TYPE_SECURITY_KEY = 6;  // 安全密钥
+  MFA_TYPE_BACKUP_CODE = 7;   // 备用代码
+}
+
+// 验证码类型
+enum CaptchaType {
+  CAPTCHA_TYPE_UNSPECIFIED = 0;
+  CAPTCHA_TYPE_IMAGE = 1;     // 图片验证码
+  CAPTCHA_TYPE_AUDIO = 2;     // 音频验证码
+  CAPTCHA_TYPE_MATH = 3;      // 数学验证码
+  CAPTCHA_TYPE_SLIDER = 4;    // 滑块验证码
+  CAPTCHA_TYPE_CLICK = 5;     // 点击验证码
+  CAPTCHA_TYPE_INVISIBLE = 6; // 无感验证
+}
+
+// 社交提供商
+enum SocialProvider {
+  SOCIAL_PROVIDER_UNSPECIFIED = 0;
+  SOCIAL_PROVIDER_GOOGLE = 1;
+  SOCIAL_PROVIDER_FACEBOOK = 2;
+  SOCIAL_PROVIDER_GITHUB = 3;
+  SOCIAL_PROVIDER_TWITTER = 4;
+  SOCIAL_PROVIDER_MICROSOFT = 5;
+  SOCIAL_PROVIDER_APPLE = 6;
+  SOCIAL_PROVIDER_LINKEDIN = 7;
+  SOCIAL_PROVIDER_WECHAT = 8;
+  SOCIAL_PROVIDER_QQ = 9;
+  SOCIAL_PROVIDER_ALIPAY = 10;
+}
+
+// 健康状态
+enum HealthStatus {
+  HEALTH_STATUS_UNSPECIFIED = 0;
+  HEALTH_STATUS_HEALTHY = 1;
+  HEALTH_STATUS_DEGRADED = 2;
+  HEALTH_STATUS_UNHEALTHY = 3;
+  HEALTH_STATUS_MAINTENANCE = 4;
+}
+
+// 组件健康
+message ComponentHealth {
+  string name = 1;
+  HealthStatus status = 2;
+  string message = 3;
+  uint32 latency_ms = 4;
+  uint32 last_check = 5;
+  map<string, string> details = 6;
+  repeated string dependencies = 7;
+  uint32 error_count = 8;
+  uint32 warning_count = 9;
+}

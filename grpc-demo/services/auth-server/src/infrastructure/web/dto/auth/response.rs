@@ -4,6 +4,7 @@ use common::security::jwt::claim::DeviceInfo;
 use common::security::jwt::claim::UserStatus;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
+use uuid::Uuid;
 
 /// 注册响应
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
@@ -27,6 +28,46 @@ pub struct RegisterResponse {
 
     /// 创建时间
     pub created_at: DateTime<Utc>,
+}
+
+/// 登陆响应
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct LoginResponse {
+    /// 访问令牌
+    pub access_token: String,
+
+    /// 刷新令牌
+    pub refresh_token: String,
+
+    /// 令牌类型
+    pub token_type: String,
+
+    /// 过期时间（秒）
+    pub expires_in: i64,
+
+    /// 用户信息
+    pub user: AuthUserResponse,
+
+    /// 是否需要MFA验证
+    #[serde(default)]
+    pub requires_mfa: bool,
+
+    /// MFA类型
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mfa_type: Option<MfaType>,
+
+    /// 会话ID
+    pub session_id: Uuid,
+
+    /// 令牌颁发时间
+    pub issued_at: DateTime<Utc>,
+
+    /// 令牌过期时间
+    pub expires_at: DateTime<Utc>,
+
+    /// 是否首次登录
+    #[serde(default)]
+    pub is_first_login: bool,
 }
 
 /// 认证用户响应
@@ -133,6 +174,19 @@ impl From<User> for AuthUserResponse {
             metadata: user.metadata,
         }
     }
+}
+
+/// MFA类型
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+pub enum MfaType {
+    #[serde(rename = "totp")]
+    Totp,
+    #[serde(rename = "sms")]
+    Sms,
+    #[serde(rename = "email")]
+    Email,
+    #[serde(rename = "recovery")]
+    Recovery,
 }
 
 fn default_true() -> bool {

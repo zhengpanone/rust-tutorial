@@ -1,5 +1,5 @@
 use crate::app::bootstrap::server::jwt::JwtService;
-use crate::application::services::auth_app::AuthApp;
+use crate::application::services::auth_service::AuthService;
 use crate::domain::identity::entities::user::User;
 use crate::domain::identity::repositories::user_repository::UserRepository;
 use crate::infrastructure::web::dto::auth::request::{LoginRequest, RegisterRequest};
@@ -10,36 +10,32 @@ use common::security::jwt::claim::JwtSession;
 use deadpool_redis::Pool as RedisPool;
 use sqlx::PgPool;
 use std::sync::Arc;
-use crate::infrastructure::persistence::repositories::user_repository_impl::UserRepositoryImpl;
 
 /// 认证应用服务实现
 #[derive(Clone)]
-pub struct AuthAppImpl {
+pub struct AuthServiceImpl {
     user_repository: Arc<dyn UserRepository + Send + Sync>,
-    jwt_service: Arc<JwtService>,
-    db_pool: PgPool,
+    // jwt_service: Arc<JwtService>,
     redis_pool: Option<Arc<RedisPool>>,
 }
 
-impl AuthAppImpl {
+impl AuthServiceImpl {
     /// 创建新的认证应用服务
     pub fn new(
-        jwt_service: Arc<JwtService>,
-        db_pool: PgPool,
+        user_repository: Arc<dyn UserRepository + Send + Sync>,
+        // jwt_service: Arc<JwtService>,
         redis_pool: Option<Arc<RedisPool>>,
     ) -> Self {
-        let user_repository = Arc::new(UserRepositoryImpl::new(db_pool.clone()));
         Self {
             user_repository,
-            jwt_service,
-            db_pool,
+            // jwt_service,
             redis_pool,
         }
     }
 }
 
 #[async_trait]
-impl AuthApp for AuthAppImpl {
+impl AuthService for AuthServiceImpl {
     /// 用户认证
     async fn authenticate_user(
         &self,

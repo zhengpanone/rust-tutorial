@@ -1,38 +1,108 @@
 syntax = "proto3";
 
-package common;
+package microservice.common;
 
 // 枚举类型
 enum Status{
-  UNKNOWN=0;
-  SUCCESS=1;
+  UNKNOWN = 0;
+  SUCCESS = 1;
   FAILED = 2;
   PENDING = 3;
 }
-// 定义公共消息
+
+// 排序顺序
+enum SortOrder {
+  SORT_ORDER_UNSPECIFIED = 0;
+  SORT_ORDER_ASC = 1;
+  SORT_ORDER_DESC = 2;
+}
+
+// 通用响应
 message CommonResponse {
   bool success = 1;
-  int32 code = 2;
+  string code = 2;
   string message = 3;
-  Status status = 4;
+  map<string, string> metadata = 4;
 }
 
+// 分页请求
 message PageRequest{
-  int32 page = 1;
-  int32 page_size = 2;
+  uint64 page = 1;
+  uint64 page_size = 2;
   string sort_by = 3;
-  bool descending = 4;
+  SortOrder sort_order = 4;
 }
 
+// 分页响应
 message PageResponse {
-  int32 page = 1;
-  int32 page_size = 2;
-  int32 total = 3;
-  int32 total_pages = 4;
+  uint64 page = 1;
+  uint64 page_size = 2;
+  uint64 total = 3;
+  uint64 total_pages = 4;
+  bool has_next = 5;
+  bool has_previous = 6;
 }
 
 // 时间范围
 message TimeRange {
   int64 start_time = 1;
   int64 end_time = 2;
+}
+
+// 时间戳
+message Timestamp {
+  int64 seconds = 1;
+  int32 nanos = 2;
+}
+
+// 通用过滤器
+message Filter {
+  map<string, string> equals = 1;
+  map<string, string> contains = 2;
+  map<string, RangeFilter> range = 3;
+  repeated string in_list = 4;
+  LogicalOperator operator = 5;
+  repeated Filter filters = 6;
+}
+
+message RangeFilter {
+  string min = 1;
+  bool min_inclusive = 2;
+  string max = 3;
+  bool max_inclusive = 4;
+}
+
+enum LogicalOperator {
+  LOGICAL_OPERATOR_UNSPECIFIED = 0;
+  LOGICAL_OPERATOR_AND = 1;
+  LOGICAL_OPERATOR_OR = 2;
+}
+
+// 地理位置
+message GeoLocation {
+  double latitude = 1;
+  double longitude = 2;
+  float accuracy = 3;
+}
+
+// 设备信息
+message DeviceInfo {
+  string device_id = 1;
+  string device_type = 2;
+  string user_agent = 3;
+  string os = 4;
+  string browser = 5;
+  string platform = 6;
+  string ip_address = 7;
+  GeoLocation location = 8;
+  map<string, string> metadata = 9;
+}
+
+// 元数据
+message Metadata {
+  map<string, string> data = 1;
+  Timestamp created_at = 2;
+  Timestamp updated_at = 3;
+  string created_by = 4;
+  string updated_by = 5;
 }

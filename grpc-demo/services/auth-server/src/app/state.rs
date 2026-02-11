@@ -1,20 +1,17 @@
-// use crate::config::Config;
-// use crate::db::postgres::create_pg_pool;
-// use crate::db::redis::create_redis_pool;
-// use crate::grpc::hello::GrpcHelloService;
-// use crate::grpc::user::GrpcUserService;
-// use crate::services::user_service::UserService;
-use crate::app::bootstrap::server::jwt::JwtService;
 use crate::app::config::config::AppConfig;
-use crate::application::services::auth_app::AuthApp;
-use crate::application::services::user_app::UserApp;
+
 use anyhow::Error;
 use chrono::{DateTime, NaiveDate, Utc};
 use dashmap::DashMap;
-use deadpool_redis::Pool as RedisPool;
-use lapin::{Channel, Connection as RabbitmqConnection};
+
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+
+use crate::app::bootstrap::InfrastructureServices;
+use crate::application::services::auth_service::AuthService;
+use crate::application::services::impls::auth_service_impl::AuthServiceImpl;
+use crate::application::services::impls::user_service_impl::UserServiceImpl;
+use crate::application::services::user_service::UserService;
+use common::error::AppResult;
 use std::{
     collections::HashMap,
     sync::{
@@ -23,53 +20,53 @@ use std::{
     },
     u64,
 };
+use tracing::info;
 use uuid::Uuid;
-use crate::app::setup::AppServices;
 
+/// 应用状态
 #[derive(Clone)]
 pub struct AppState {
     /// 配置
-    pub services: Arc<AppServices>,
-    /// 数据库池
-    pub db_pool: PgPool,
-    /// Redis连接池
-    pub redis_pool: Option<RedisPool>,
+    pub config: AppConfig,
+    // 基础设施服务
+    pub infrastructure_services: Arc<InfrastructureServices>,
 
-    /// RabbitMQ连接
-    // pub rabbitmq_connection: Option<Arc<RabbitmqConnection>>,
-    // pub rabbitmq_channel: Option<Arc<Channel>>,
+    pub user_service: Arc<dyn UserService>,
+    pub auth_service: Arc<dyn AuthService>,
+    pub startup_time: DateTime<Utc>,
+}
 
-    /// 安全服务
-    pub jwt_service: Arc<JwtService>,
-    // pub password_hasher: Arc<PasswordHasher>,
-    // pub password_validator: Arc<PasswordValidator>,
-    /// 应用服务
-    pub auth_app: Arc<dyn AuthApp + Send + Sync>,
-    pub user_app: Arc<dyn UserApp + Send + Sync>,
+pub async fn init_app_state(
+    config: &AppConfig,
+    infrastructure_services: InfrastructureServices,
+) -> AppResult<Arc<AppState>> {
+    info!("🎯 Initializing application state...");
 
-    // pub request_stats: Arc<RequestStats>,
+    let state = Arc::new(AppState::new(config).await?);
+
+    Ok(state)
 }
 
 impl AppState {
-    pub async fn new(config: AppConfig) -> Result<Self, Error> {
-        // // 初始化数据库
-        // let db_pool = create_pg_pool(&config.database)
-        //     .await
-        //     .expect("Failed to connect to DB");
-        // info!("Database connection established");
-        // // 初始化redis
-        // let redis_pool = create_redis_pool(&config.redis)
-        //     .await
-        //     .map_err(|e| anyhow!("Failed to connect to Redis: {}", e))?;
-        //
-        // // 运行数据库迁移
-        // // sqlx::migrate!("./migrations").run(&db_pool).await?;
-        // Ok(Self {
-        //     db: db_pool,
-        //     redis_pool,
-        //     config,
-        // })
-        todo!()
+    pub async fn new(config: &AppConfig) -> AppResult<Self> {
+        // 1. 获取基础设施适配器
+        let infrastructure_services = InfrastructureServices::new(config).await?;
+        let user_repository = infrastructure_services.get_user_repository();
+        // 2. 创建领域服务工厂
+
+        // 3. 初始化应用服务
+        let user_service = Arc::new(UserServiceImpl::new(user_repository.clone()));
+        let auth_service = Arc::new(AuthServiceImpl::new(
+            user_repository.clone(),
+            infrastructure_services.redis_pool.clone(),
+        ));
+        Ok(Self {
+            config: config.clone(),
+            infrastructure_services: Arc::new(infrastructure_services),
+            user_service,
+            auth_service,
+            startup_time: Utc::now(),
+        })
     }
 
     // /// 记录请求统计

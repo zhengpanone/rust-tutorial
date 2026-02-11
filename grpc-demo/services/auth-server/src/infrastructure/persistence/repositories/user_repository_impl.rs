@@ -4,6 +4,7 @@ use crate::domain::identity::repositories::user_repository::UserRepository;
 use async_trait::async_trait;
 use common::error::AppError;
 use sqlx::types::Json;
+use std::sync::Arc;
 
 use sqlx::PgPool;
 use tracing::{debug, error};
@@ -12,12 +13,13 @@ use tracing::{debug, error};
 #[derive(Clone)]
 pub struct UserRepositoryImpl {
     pool: PgPool,
+    redis_pool: Option<Arc<deadpool_redis::Pool>>,
 }
 
 impl UserRepositoryImpl {
     /// 创建新的用户仓库
-    pub fn new(pool: PgPool) -> Self {
-        Self { pool }
+    pub fn new(pool: PgPool, redis_pool: Option<Arc<deadpool_redis::Pool>>) -> Self {
+        Self { pool, redis_pool }
     }
 }
 

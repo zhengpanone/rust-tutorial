@@ -1,26 +1,24 @@
 use crate::domain::identity::repositories::user_repository::UserRepository;
-use crate::infrastructure::persistence::repositories::user_repository_impl::UserRepositoryImpl;
 use std::sync::Arc;
-
+use async_trait::async_trait;
+use common::error::AppError;
+use common::web::pagination::PaginatedData;
+use common::web::response::Pagination;
+use crate::application::services::user_service::UserService;
 use crate::domain::identity::entities::user::User;
+use crate::infrastructure::web::dto::user::request::{CreateUserRequest, UpdateUserRequest, UserFilter};
 use crate::infrastructure::web::dto::user::response::UserResponse;
 
 /// 用户应用服务实现
 #[derive(Clone)]
-pub struct UserAppImpl {
+pub struct UserServiceImpl {
     user_repository: Arc<dyn UserRepository + Send + Sync>,
-    db_pool: sqlx::PgPool,
 }
 
-impl UserAppImpl {
+impl UserServiceImpl {
     /// 创建新的用户应用服务
-    pub fn new(db_pool: sqlx::PgPool) -> Self {
-        let user_repository = Arc::new(UserRepositoryImpl::new(db_pool.clone()));
-
-        Self {
-            user_repository,
-            db_pool,
-        }
+    pub fn new(user_repository: Arc<dyn UserRepository + Send + Sync>) -> Self {
+        Self { user_repository }
     }
     /// 转换为用户响应
     fn to_user_response(&self, user: User) -> UserResponse {
@@ -45,5 +43,33 @@ impl UserAppImpl {
         //     updated_at: user.updated_at,
         //     metadata: user.metadata,
         // }
+    }
+}
+
+#[async_trait]
+impl UserService for UserServiceImpl {
+    async fn create_user(&self, request: CreateUserRequest) -> Result<User, AppError> {
+        todo!()
+    }
+
+    async fn get_user(&self, user_id: &str) -> Result<User, AppError> {
+        // self.user_repository.get_user(user_id).await
+        todo!()
+    }
+
+    async fn list_users(&self, filter: UserFilter, pagination: Pagination) -> Result<PaginatedData<Vec<User>>, AppError> {
+        todo!()
+    }
+
+    async fn update_user(&self, user_id: &str, request: UpdateUserRequest) -> Result<User, AppError> {
+        todo!()
+    }
+
+    async fn delete_user(&self, user_id: &str) -> Result<(), AppError> {
+        todo!()
+    }
+
+    async fn enabled_user(&self, user_id: &str) -> Result<(), AppError> {
+        todo!()
     }
 }

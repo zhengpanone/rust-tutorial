@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::Type;
 use std::collections::HashMap;
 use utoipa::ToSchema;
+use uuid::Uuid;
 use validator::Validate;
 
 /// JWT令牌类型
@@ -151,7 +152,7 @@ pub struct DeviceInfo {
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
 pub struct JwtSession {
     /// 会话ID
-    pub id: String,
+    pub id: Uuid,
     /// 设备信息
     #[serde(skip_serializing_if = "Option::is_none")]
     pub device_info: Option<DeviceInfo>,

@@ -11,6 +11,18 @@ pub fn init_logger(config: &LogConfig) -> WorkerGuard {
     let env_filter = EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| EnvFilter::new(config.log_level.clone()));
 
+    // let log_level = std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string());
+    // 将字符串转换为 Level
+    // let level = match log_level.to_lowercase().as_str() {
+    //     "trace" => Level::TRACE,
+    //     "debug" => Level::DEBUG,
+    //     "info" => Level::INFO,
+    //     "warn" => Level::WARN,
+    //     "error" => Level::ERROR,
+    //     _ => Level::INFO,
+    // };
+    // tracing_subscriber::fmt().with_max_level(level).init();
+
     // 控制台输出
     let stdout_layer = fmt::layer()
         .with_writer(std::io::stdout)

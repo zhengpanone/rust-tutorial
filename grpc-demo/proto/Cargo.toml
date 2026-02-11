@@ -9,10 +9,10 @@ name = "proto" # 明确指定库名
 path = "src/lib.rs" # 明确指定库路径
 
 [dependencies]
-prost = {workspace = true}
-prost-types ={workspace = true}
+prost = { workspace = true }
+prost-types = { workspace = true }
 tonic = { workspace = true }
-tonic-prost = {workspace = true}
+tonic-prost = { workspace = true }
 
 # 构建依赖
 [build-dependencies]

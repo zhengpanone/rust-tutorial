@@ -1,8 +1,8 @@
 use crate::app::config::config::AppConfig;
-use crate::app::state::AppState;
-use crate::application::handlers::metrics_handler::get_metrics;
-use crate::{api::http::configure_routes, app::middleware::http::logging::request_logger};
-use axum::Router;
+use crate::app::setup::AppServices;
+use crate::app::state::{AppState, init_app_state};
+use crate::domain::identity::repositories::user_repository::UserRepository;
+use crate::infrastructure::persistence::repositories::user_repository_impl::UserRepositoryImpl;
 use common::error::{AppError, AppResult};
 use std::error::Error;
 use std::sync::Arc;
@@ -15,21 +15,41 @@ mod logger; // 日志初始化
 mod rabbitmq;
 mod redis;
 pub mod server;
-mod services;
 
-/// 服务器启动
+/// 应用引导器
+/// 1.初始化所有组件
+/// 2. 配置依赖注入
+/// 3.启动应用程序
+/// 4. 管理生命周期
 pub struct AppBootstrap {
-    config: Arc<AppConfig>,
-    state: Option<Arc<AppState>>,
-    services: Option<InfrastructureServices>,
+    config: AppConfig,
+    app_state: Option<Arc<AppState>>,
+    infrastructure_services: Arc<InfrastructureServices>,
+    app_services: Arc<AppServices>,
 }
 
 impl AppBootstrap {
-    pub fn new(config: AppConfig) -> Self {
+    pub async fn new(config: AppConfig) -> Self {
+        // 1. 初始化AppState
+        let app_state = Arc::new(
+            AppState::new(&config)
+                .await
+                .map_err(|e| AppError::Internal(e.to_string()))
+                .unwrap(),
+        );
+        // 2. 初始化基础设施服务
+        let infrastructure_services = Arc::new(InfrastructureServices::new(&config).await.unwrap());
+        // 3. 初始化应用服务
+        let app_services = Arc::new(
+            AppServices::new(&config, app_state.clone(), infrastructure_services.clone())
+                .await
+                .unwrap(),
+        );
         Self {
-            config: Arc::new(config),
-            state: None,
-            services: None,
+            config,
+            app_state: Some(app_state),
+            infrastructure_services,
+            app_services,
         }
     }
 
@@ -46,14 +66,16 @@ impl AppBootstrap {
 
         // 4. 初始化基础设施服务
         let infrastructure_services = self.init_infrastructure().await?;
-        self.services = Some(infrastructure_services.clone());
+        self.infrastructure_services = Arc::new(infrastructure_services.clone());
 
-        // 初始化应用服务
-        let app_services = self
-            .init_application_services(&infrastructure_services)
+        // 5. 初始化应用服务
+        let state = self
+            .init_application_services(infrastructure_services.clone())
             .await?;
+        self.app_state = Some(state.clone());
+
         // 6. 启动服务器
-        self.start_server(app_services.clone()).await?;
+        self.start_server(state.clone()).await?;
 
         Ok(())
     }
@@ -105,30 +127,25 @@ impl AppBootstrap {
         Ok(services)
     }
 
-    /// 初始化应用服务
     async fn init_application_services(
         &self,
-        infra_services: &InfrastructureServices,
+        infra_services: InfrastructureServices,
     ) -> AppResult<Arc<AppState>> {
         info!("🎯 Initializing application services...");
-        let state = services::init_app_state(self.config.clone(), infra_services).await?;
-        info!("🔧 Application services initialized");
-        Ok(state)
+        let app_state = init_app_state(&self.config, infra_services.clone()).await?;
+        Ok(app_state)
     }
-
     async fn start_server(&self, state: Arc<AppState>) -> Result<(), AppError> {
         info!("🌐 Starting servers...");
-        match (
-            self.config.server.enable_http,
-            false, /*self.config.grpc.enabled*/
-        ) {
+        match (self.config.server.enable_http, self.config.grpc.enabled) {
             (true, true) => {
                 // 启动混合服务器
                 todo!()
             }
             (true, false) => {
                 // 只启动HTTP服务器
-                todo!()
+                server::http::start_http_server(state.as_ref().clone(), &self.config.server)
+                    .await?;
             }
             (false, true) => {
                 // 只启动gRPC服务器
@@ -141,76 +158,7 @@ impl AppBootstrap {
                 ));
             }
         }
-        todo!()
-    }
-    /// 配置HTTP路由
-    fn configure_http_router(&self, state: Arc<AppState>) -> Router<Arc<AppState>> {
-        // 1. 配置API路由
-        let mut app = configure_routes();
-
-        // 2. 添加状态
-        app = app.with_state(state.clone());
-        // 3. 添加全局中间件
-        app = self.add_global_middleware(state.clone(), app);
-
-        // 4. 添加OpenAPI文档
-        app = self.add_openapi_docs(app);
-
-        // 5. 添加监控端点
-        // app = self.add_monitoring_endpoints(app);
-        app
-    }
-
-    /// 添加OpenAPI文档
-    fn add_global_middleware(
-        &self,
-        app_state: Arc<AppState>,
-        app: Router<Arc<AppState>>,
-    ) -> Router<Arc<AppState>> {
-        use axum::middleware;
-        app.layer(middleware::from_fn_with_state(app_state, request_logger))
-    }
-
-    fn add_openapi_docs(&self, app: Router<Arc<AppState>>) -> Router<Arc<AppState>> {
-        if self.config.server.enable_openapi {
-            // TODO
-            todo!()
-        } else {
-            app
-        }
-    }
-
-    fn add_monitoring_endpoints(&self, app: Router<Arc<AppState>>) -> Router<Arc<AppState>> {
-        use axum::routing::get;
-        let mut router = app;
-        // 健康检查
-        router = router.route(
-            "/health",
-            get(crate::application::handlers::health_handler::health_check),
-        );
-        router = router.route(
-            "/ready",
-            get(crate::application::handlers::health_handler::ready_check),
-        );
-        router = router.route(
-            "/live",
-            get(crate::application::handlers::health_handler::live_check),
-        );
-
-        // 指标
-        if self.config.server.enable_metrics {
-            router = router.route("/metrics", get(get_metrics))
-        }
-        // 版本信息
-        router = router.route(
-            "/version",
-            get(|| async { format!("Microservice Manager v{}", env!("CARGO_PKG_VERSION")) }),
-        );
-        router
-    }
-
-    pub fn state(&self) -> Option<&Arc<AppState>> {
-        self.state.as_ref()
+        Ok(())
     }
 }
 
@@ -219,5 +167,77 @@ impl AppBootstrap {
 pub struct InfrastructureServices {
     pub database_pool: sqlx::PgPool,
     pub redis_pool: Option<Arc<deadpool_redis::Pool>>,
+    // pub search: Arc<dyn SearchEngine + Send + Sync>,
+
+    // 消息队列
+    // pub message_queue: Arc<dyn MessageQueue + Send + Sync>,
+    // pub event_bus: Arc<dyn EventBus + Send + Sync>,
     // pub message_queue: Option<lapin::Connection>,
+    //
+    // // 外部API
+    // pub http_client: Arc<dyn HttpClient + Send + Sync>,
+    // pub api_clients: HashMap<String, Arc<dyn ApiClient + Send + Sync>>,
+    //
+    // // 文件存储
+    // pub storage: Arc<dyn Storage + Send + Sync>,
+    // pub cdn: Arc<dyn Cdn + Send + Sync>,
+    //
+    // // 认证授权
+    // pub auth_service.proto: Arc<dyn AuthService + Send + Sync>,
+    // pub authorization_service: Arc<dyn AuthorizationService + Send + Sync>,
+    //
+    // // 监控
+    // pub metrics_client: Arc<dyn MetricsClient + Send + Sync>,
+    // pub logging_client: Arc<dyn LoggingClient + Send + Sync>,
+    // pub tracing_client: Arc<dyn TracingClient + Send + Sync>,
+    //
+    // // 其他
+    // pub email_service: Arc<dyn EmailService + Send + Sync>,
+    // pub sms_service: Arc<dyn SmsService + Send + Sync>,
+    // pub notification_service: Arc<dyn NotificationService + Send + Sync>,
+    //
+    // // 配置
+    // pub config_service: Arc<dyn ConfigService + Send + Sync>,
+    //
+    // // 任务调度
+    // pub scheduler: Arc<dyn Scheduler + Send + Sync>,
+    // pub job_queue: Arc<dyn JobQueue + Send + Sync>,
+}
+
+impl InfrastructureServices {
+    pub async fn new(config: &AppConfig) -> AppResult<Self> {
+        let database_pool = database::init_database(&config.database).await?;
+        let (redis_client, redis_pool) = redis::init_redis(&config.redis).await?;
+
+        // // 3. 初始化消息队列
+        // let message_queue = Self::init_message_queue(config, app_state.clone()).await?;
+        //
+        // // 4. 初始化HTTP客户端
+        // let http_client = Self::init_http_client(config, app_state.clone()).await?;
+        //
+        // // 5. 初始化认证服务
+        // let auth_service.proto = Self::init_auth_service(config, app_state.clone()).await?;
+        //
+        // // 6. 初始化监控
+        // let metrics_client = Self::init_metrics(config, app_state.clone()).await?;
+        //
+        // // 7. 初始化其他服务
+        // let email_service = Self::init_email_service(config, app_state.clone()).await?;
+        //
+        // // 8. 初始化配置服务
+        // let config_service = Self::init_config_service(config, app_state.clone()).await?;
+
+        Ok(Self {
+            database_pool,
+            redis_pool,
+        })
+    }
+
+    // 为领域层提供接口实现
+    pub fn get_user_repository(&self) -> Arc<dyn UserRepository> {
+        Arc::new(UserRepositoryImpl::new(
+            self.database_pool.clone(),
+            self.redis_pool.clone(),
+        ))
+    }
 }

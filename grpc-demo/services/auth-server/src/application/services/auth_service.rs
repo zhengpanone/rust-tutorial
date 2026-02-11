@@ -1,4 +1,4 @@
-// src/application/services/auth_app.rs
+// src/application/services/auth_service.proto
 
 use crate::domain::identity::entities::user::User;
 use crate::infrastructure::web::dto::auth::request::{LoginRequest, RegisterRequest};
@@ -9,7 +9,7 @@ use common::security::jwt::claim::JwtSession;
 
 /// 认证应用服务 trait
 #[async_trait]
-pub trait AuthApp: Send + Sync {
+pub trait AuthService: Send + Sync {
     /// 用户认证
     async fn authenticate_user(&self, username: String, password: String)
     -> Result<User, AppError>;

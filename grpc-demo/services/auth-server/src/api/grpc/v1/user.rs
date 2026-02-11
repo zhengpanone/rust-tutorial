@@ -3,7 +3,7 @@ use std::sync::Arc;
 use prost_types::Timestamp;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::services::user_service::UserService;
+
 use proto::common;
 use proto::user::user_service_grpc_server::UserServiceGrpc;
 use proto::user::{
@@ -13,6 +13,8 @@ use proto::user::{
 };
 use tonic::codegen::tokio_stream::wrappers::ReceiverStream;
 use tonic::{Request, Response, Status};
+use crate::app::state::AppState;
+use crate::application::services::user_service::UserService;
 
 fn now_timestamp() -> Timestamp {
     let duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
@@ -23,12 +25,17 @@ fn now_timestamp() -> Timestamp {
     }
 }
 
+
+pub fn grpc_user_service(state: Arc<AppState>) -> GrpcUserService {
+    GrpcUserService::new(state.user_service.clone())
+}
+
 // gRPC adapter
 pub struct GrpcUserService {
-    service: Arc<UserService>,
+    service: Arc<dyn UserService>,
 }
 impl GrpcUserService {
-    pub fn new(service: Arc<UserService>) -> Self {
+    pub fn new(service: Arc<dyn UserService>) -> Self {
         Self { service }
     }
 }

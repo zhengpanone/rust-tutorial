@@ -10,6 +10,7 @@ pub mod security;
 pub mod server;
 pub mod summary;
 pub mod validator;
+pub mod cors;
 
 #[cfg(test)]
 mod tests {

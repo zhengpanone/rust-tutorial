@@ -154,7 +154,7 @@ pub async fn request_logger(
     let (body, request_body) = if config.log_request_body {
         extract_request_body(body, &config).await
     } else {
-        (Body::empty(), None)
+        (body /*Body::empty()*/, None)
     };
 
     // 重新构建请求
@@ -180,7 +180,7 @@ pub async fn request_logger(
     let (body, response_body) = if config.log_response_body {
         extract_response_body(body, &config).await
     } else {
-        (Body::empty(), None)
+        (body, None)
     };
     // 重新构建响应
     let mut response = Response::from_parts(parts, body);
@@ -205,8 +205,10 @@ pub async fn request_logger(
     if duration.as_millis() > config.slow_request_threshold_ms as u128 {
         log_slow_request(&request_id, &method, &uri, duration, &config);
     }
-
-    // TODO
+    // 记录指标
+    // record_metrics(&state, &method, &uri, status, duration);
+    // 记录审计日志
+    // record_audit_log(&state, &request_log, &response_log, request_body.as_deref());
     response
 }
 
@@ -569,21 +571,93 @@ fn record_metrics(
     duration: Duration,
 ) {
     // 记录请求统计
-    state.record_request(
-        uri.path(),
-        method.as_str(),
-        duration.as_millis() as u64,
-        status.is_success(),
-    );
-    // TODO
-}
+    // state.record_request(
+    //     uri.path(),
+    //     method.as_str(),
+    //     duration.as_millis() as u64,
+    //     status.is_success(),
+    // );
 
-fn record_audit_log(
-    state: &AppState,
-    request_log: &RequestLog,
-    response_log: &ResponseLog,
-    request_body: Option<&str>,
-) {
-    // 记录到审计日志表
-    // TODO
+    // Prometheus指标
+    // metrics::counter!("http_requests_total", 1,
+    //     "method" => method.as_str(),
+    //     "uri" => uri.path(),
+    //     "status" => status.as_str(),
+    // );
+    //
+    // metrics::histogram!("http_request_duration_seconds", duration.as_secs_f64(),
+    //     "method" => method.as_str(),
+    //     "uri" => uri.path(),
+    //     "status" => status.as_str(),
+    // );
+    todo!()
 }
+//
+// /// 记录审计日志
+// fn record_audit_log(
+//     state: &AppState,
+//     request_log: &RequestLog,
+//     response_log: &ResponseLog,
+//     request_body: Option<&str>,
+// ) {
+//     // 记录到审计日志表
+//     if state.config.audit.enabled {
+//         // 异步记录，不阻塞请求
+//         let state_clone = state.clone();
+//         let request_log_clone = request_log.clone();
+//         let response_log_clone = response_log.clone();
+//         let request_body_clone = request_body.map(|s| s.to_string());
+//
+//         tokio::spawn(async move {
+//             if let Err(e) = save_audit_log_to_db(
+//                 &state_clone,
+//                 &request_log_clone,
+//                 &response_log_clone,
+//                 request_body_clone.as_deref(),
+//             ).await {
+//                 error!("Failed to save audit log: {}", e);
+//             }
+//         });
+//     }
+// }
+//
+// /// 保存审计日志到数据库
+// async fn save_audit_log_to_db(
+//     state: &AppState,
+//     request_log: &RequestLog,
+//     response_log: &ResponseLog,
+//     request_body: Option<&str>,
+// ) -> Result<(), sqlx::Error> {
+//     let user_id = request_log.user_id
+//         .as_ref()
+//         .and_then(|id| Uuid::parse_str(id).ok());
+//
+//     sqlx::query!(
+//         r#"
+//         INSERT INTO audit_logs (
+//             id, user_id, request_id, method, uri, client_ip,
+//             user_agent, request_headers, request_body, response_status,
+//             response_headers, response_body, duration_ms, created_at
+//         )
+//         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+//         "#,
+//         Uuid::new_v4(),
+//         user_id,
+//         request_log.request_id,
+//         request_log.method.as_str(),
+//         request_log.uri.to_string(),
+//         request_log.client_ip,
+//         request_log.user_agent,
+//         serde_json::to_string(&request_log.headers).unwrap_or_default(),
+//         request_body.unwrap_or(""),
+//         response_log.status.as_u16() as i32,
+//         serde_json::to_string(&response_log.headers).unwrap_or_default(),
+//         "",  // 响应体通常不保存
+//         response_log.duration.as_millis() as i64,
+//         Utc::now(),
+//     )
+//         .execute(state.pg_pool())
+//         .await?;
+//
+//     Ok(())
+// }

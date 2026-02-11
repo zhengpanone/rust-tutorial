@@ -1,7 +1,7 @@
 // proto/proto/product.proto
 syntax = "proto3";
 
-package product;
+package microservice.product;
 
 import "common/common.proto";  // 导入公共定义
 

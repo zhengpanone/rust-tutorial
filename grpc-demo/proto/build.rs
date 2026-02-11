@@ -9,7 +9,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let protos = &[
         "proto/common/common.proto",
         "proto/hello.proto",
-        "proto/user.proto",
+        "proto/user_service.proto",
+        "proto/auth_service.proto",
         "proto/product.proto",
     ];
 
@@ -20,7 +21,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let out_dir = PathBuf::from(std::env::var("OUT_DIR")?);
 
     // 设置描述符文件路径
-    let descriptor_path = out_dir.join("descriptor.bin");
+    let descriptor_path = out_dir.join("grpc_descriptor.bin");
 
     // 编译 proto文件
     tonic_prost_build::configure()
@@ -28,6 +29,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build_client(true)
         // ✅ Reflection 必须
         .file_descriptor_set_path(&descriptor_path)
+        // .type_attribute(
+        //     ".microservice.user.User",
+        //     "#[derive(serde::Serialize, serde::Deserialize)]",
+        // )
+        // .type_attribute(
+        //     ".microservice.auth.AuthResponse",
+        //     "#[derive(serde::Serialize, serde::Deserialize)]"
+        // )
+        // .type_attribute(
+        //     ".microservice.common.CommonResponse",
+        //     "#[derive(serde::Serialize, serde::Deserialize)]"
+        // )
         // ❌ 不要 out_dir("src")
         // .out_dir("src") // 输出到src目录
         .compile_protos(protos, includes)?;
@@ -37,6 +50,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // ✅ 将描述符文件复制到项目根目录（可选）
-    let _ = std::fs::copy(&descriptor_path, "descriptor.bin");
+    let _ = std::fs::copy(&descriptor_path, "grpc_descriptor.bin");
     Ok(())
 }

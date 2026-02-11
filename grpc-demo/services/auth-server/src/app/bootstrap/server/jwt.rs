@@ -284,7 +284,7 @@ impl JwtService {
             self.store_refresh_token(
                 claim.jti.clone(),
                 claim.sub.clone(),
-                claim.session.id.clone(),
+                claim.session.id.to_string(),
             )
             .await?;
         }

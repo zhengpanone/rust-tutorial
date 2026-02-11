@@ -1,7 +1,7 @@
 // proto/proto/hello.proto
 syntax="proto3";
 
-package hello;
+package microservice.hello;
 
 import "common/common.proto";
 import "google/protobuf/timestamp.proto";

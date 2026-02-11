@@ -1,3 +1,3 @@
-pub async fn get_metrics() {
+pub async fn prometheus_metrics() {
     todo!()
 }
