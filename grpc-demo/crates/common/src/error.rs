@@ -105,6 +105,9 @@ pub enum AppError {
 
     #[error("参数错误: {0}")]
     InvalidArgument(String),
+
+    #[error("ID错误: {0}")]
+    InvalidId(String),
 }
 
 impl AppError {
@@ -124,6 +127,22 @@ impl AppError {
             AppError::MethodNotAllowed(_) => StatusCode::METHOD_NOT_ALLOWED,
             _ => StatusCode::INTERNAL_SERVER_ERROR,
         }
+    }
+
+    /// 转换为 tonic::Status
+    pub fn to_tonic_status(&self) -> tonic::Status {
+        let code = match self {
+            AppError::NotFound(_) => tonic::Code::NotFound,
+            AppError::AlreadyExists(_) => tonic::Code::AlreadyExists,
+            AppError::Validation(_) => tonic::Code::InvalidArgument,
+            AppError::Authentication(_) => tonic::Code::Unauthenticated,
+            AppError::Authorization(_) => tonic::Code::PermissionDenied,
+            AppError::InvalidArgument(_) => tonic::Code::InvalidArgument,
+            AppError::RateLimit(_) => tonic::Code::ResourceExhausted,
+            AppError::Timeout(_) => tonic::Code::DeadlineExceeded,
+            _ => tonic::Code::Internal,
+        };
+        tonic::Status::new(code, self.to_string())
     }
 
     pub fn error_code(&self) -> &'static str {
@@ -151,6 +170,7 @@ impl AppError {
             AppError::MethodNotAllowed(_) => "METHOD_NOT_ALLOWED",
             AppError::Hashing(_) => "HASHING_ERROR",
             AppError::InvalidArgument(_) => "INVALID_ARGUMENT",
+            AppError::InvalidId(_) => "INVALID_ID",
         }
     }
 

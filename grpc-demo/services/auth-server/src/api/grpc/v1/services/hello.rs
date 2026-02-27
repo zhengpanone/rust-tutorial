@@ -3,8 +3,11 @@ use proto::hello::{HelloReply, HelloRequest};
 use tonic::{Request, Response, Status, Streaming};
 use tracing::info;
 
+// gRPC adapter
 #[derive(Default)]
 pub struct GrpcHelloService;
+
+
 #[tonic::async_trait]
 impl GreeterService for GrpcHelloService {
     // 简单 RPC

@@ -6,8 +6,7 @@ use crate::application::handlers::SecurityAddon;
 use crate::infrastructure::web::dto::user::request::{CreateUserRequest, UpdateUserRequest};
 use crate::infrastructure::web::dto::user::response::UserResponse;
 use axum::Json;
-use axum::extract::{Path, State};
-use axum::http::StatusCode;
+use axum::extract::{ State};
 use common::error::AppResult;
 use common::web::response::ApiResponse;
 use std::sync::Arc;
@@ -45,7 +44,7 @@ const TAG_NAME: &str = "User API";
 )]
 #[instrument(name="http_get_current_user", skip_all, fields(user_id=%auth_user.user_id))]
 pub async fn get_current_user(
-    State(state): State<Arc<AppState>>,
+    State(_state): State<Arc<AppState>>,
     auth_user: AuthUser,
 ) -> AppResult<ApiResponse<UserResponse>> {
     debug!("get_current_user: {:?}", auth_user);
@@ -68,8 +67,8 @@ pub async fn get_current_user(
     )
 )]
 pub async fn update_current_user(
-    State(state): State<Arc<AppState>>,
-    Json(payload): Json<UpdateUserRequest>,
+    State(_state): State<Arc<AppState>>,
+    Json(_payload): Json<UpdateUserRequest>,
 ) -> AppResult<ApiResponse<UserResponse>> {
     todo!()
 }
@@ -95,11 +94,14 @@ pub async fn get_user_profile_public() {
         ("jwt" = [])
     )
 )]
+// #[instrument(name="http_create_user", skip_all, fields(user_id=%auth_user.user_id))]
 pub async fn create_user(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<CreateUserRequest>,
 ) -> AppResult<ApiResponse<UserResponse>> {
-    todo!("TODO: 创建用户")
+    let user = state.user_service.create_user(payload).await?;
+    let resp = UserResponse::from(user);
+    Ok(ApiResponse::success(resp))
 }
 
 /// 用户相关的 API 文档

@@ -1,6 +1,6 @@
 // src/application/services/auth_service.proto
 
-use crate::domain::identity::entities::user::User;
+use crate::domain::identity::models::user::User;
 use crate::infrastructure::web::dto::auth::request::{LoginRequest, RegisterRequest};
 use crate::infrastructure::web::dto::auth::response::SessionInfoResponse;
 use async_trait::async_trait;

@@ -4,7 +4,7 @@ use crate::app::state::AppState;
 use crate::application::services::auth_service::AuthService;
 use crate::application::services::impls::auth_service_impl::AuthServiceImpl;
 use crate::application::services::impls::user_service_impl::UserServiceImpl;
-use crate::application::services::user_service::UserService;
+
 use common::error::AppResult;
 use std::sync::Arc;
 
@@ -43,8 +43,8 @@ pub struct AppServices {
 
 impl AppServices {
     pub async fn new(
-        config: &AppConfig,
-        app_state: Arc<AppState>,
+        _config: &AppConfig,
+        _app_state: Arc<AppState>,
         infrastructure_services: Arc<InfrastructureServices>,
     ) -> AppResult<Self> {
         // 1. 获取基础设施适配器
@@ -52,7 +52,7 @@ impl AppServices {
         // 2. 创建领域服务工厂
 
         // 3. 初始化应用服务
-        let user_service = Arc::new(UserServiceImpl::new(user_repository.clone()));
+        let _user_service = Arc::new(UserServiceImpl::new(user_repository.clone()));
         let auth_service = Arc::new(AuthServiceImpl::new(
             user_repository.clone(),
             infrastructure_services.redis_pool.clone(),

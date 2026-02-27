@@ -16,7 +16,7 @@ DROP TABLE IF EXISTS sys_user;
 CREATE TABLE IF NOT EXISTS sys_user
 (
     -- 主键
-    id                   VARCHAR(36) PRIMARY KEY   DEFAULT gen_random_uuid(),
+    id                   UUID PRIMARY KEY   DEFAULT gen_random_uuid(),
 
     -- 基本信息
     username             VARCHAR(50)      NOT NULL,
@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS sys_user
     last_activity_at     TIMESTAMPTZ,
 
     -- 账户安全
+    locked_until TIMESTAMPTZ,
     locked_at            TIMESTAMPTZ,
     lock_reason          VARCHAR(255),
     password_changed_at  TIMESTAMPTZ,
@@ -81,6 +82,7 @@ COMMENT ON COLUMN sys_user.login_count IS '登录次数';
 COMMENT ON COLUMN sys_user.failed_login_count IS '失败登录次数';
 COMMENT ON COLUMN sys_user.last_failed_login_at IS '最后失败登录时间';
 COMMENT ON COLUMN sys_user.locked_at IS '账户锁定时间';
+COMMENT ON COLUMN sys_user.locked_until IS '锁定到期时间';
 COMMENT ON COLUMN sys_user.lock_reason IS '账户锁定原因';
 COMMENT ON COLUMN sys_user.password_changed_at IS '密码最后修改时间';
 COMMENT ON COLUMN sys_user.password_expires_at IS '密码过期时间';

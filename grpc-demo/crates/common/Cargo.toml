@@ -23,3 +23,5 @@ deadpool-redis = "0.22.1" # 连接池
 uuid = { workspace = true, features = ["v4", "serde"] }
 config = "0.15.19"
 anyhow = { workspace = true }
+tonic = "0.14.2"
+argon2 = "0.5.3"

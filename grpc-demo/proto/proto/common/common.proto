@@ -17,6 +17,10 @@ enum SortOrder {
   SORT_ORDER_DESC = 2;
 }
 
+message CommonId{
+  string id = 1;
+}
+
 // 通用响应
 message CommonResponse {
   bool success = 1;

@@ -1,4 +1,4 @@
-// src/domain/services/entities/module.rs
+// src/domain/services/models/module.rs
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 

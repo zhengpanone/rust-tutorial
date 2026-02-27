@@ -1,8 +1,7 @@
 use chrono::{DateTime, Utc};
+use common::enums::role::{RoleStatus, RoleType};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
-
-use crate::enums::role_enums::RoleStatus;
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct SysRole {
@@ -12,15 +11,18 @@ pub struct SysRole {
     pub role_name: String,
 
     pub role_code: String,
-    pub role_type: String, //角色类型：1-系统角色，2-业务角色，3-自定义角色'
 
-    pub role_desc: String,
+    pub role_type: RoleType, //角色类型：1-系统角色，2-业务角色，3-自定义角色'
+
+    pub role_desc: Option<String>,
 
     // 角色状态
     #[sqlx(default)]
     pub status: RoleStatus,
+
     // 是否默认角色 是否用于自动分配、默认初始化角色，通常可删
     pub is_default: bool,
+
     // 是否保护角色 是否为系统核心角色，强保护，不允许删
     pub is_protected: bool,
 

@@ -1,15 +1,14 @@
-// src/domain/services/entities/service.rs
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
-use uuid::Uuid;
-use validator::Validate;
-
+// src/domain/services/models/service.rs
 use super::super::{
     events::service_events::ServiceCreated,
     value_objects::{ServiceStatus, ServiceType, Url},
 };
+use chrono::{DateTime, Utc};
+use common::error::{AppError, AppResult};
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ServiceId(String);
 
 impl ServiceId {
@@ -17,9 +16,9 @@ impl ServiceId {
         Self(Uuid::new_v4().to_string())
     }
 
-    pub fn parse(id: &str) -> Result<Self, crate::shared::error::Error> {
+    pub fn parse(id: &str) -> AppResult<Self> {
         Uuid::parse_str(id)
-            .map_err(|_| crate::shared::error::Error::InvalidId(id.to_string()))
+            .map_err(|_| AppError::InvalidId(id.to_string()))
             .map(|_| Self(id.to_string()))
     }
 
@@ -75,39 +74,35 @@ impl Service {
         status: ServiceStatus,
         health_endpoint: Option<String>,
         is_internal: bool,
-    ) -> Result<(Self, Vec<ServiceCreated>), crate::shared::error::Error> {
+    ) -> AppResult<(Self, Vec<ServiceCreated>)> {
         // 验证业务规则
         if service_code.is_empty() || service_code.len() > 50 {
-            return Err(crate::shared::error::Error::Validation(
+            return Err(AppError::Validation(
                 "服务编码长度必须在1-50之间".to_string(),
             ));
         }
 
         if service_name.is_empty() || service_name.len() > 100 {
-            return Err(crate::shared::error::Error::Validation(
+            return Err(AppError::Validation(
                 "服务名称长度必须在1-100之间".to_string(),
             ));
         }
 
         if let Some(ref desc) = description {
             if desc.len() > 500 {
-                return Err(crate::shared::error::Error::Validation(
-                    "服务描述长度不能超过500".to_string(),
-                ));
+                return Err(AppError::Validation("服务描述长度不能超过500".to_string()));
             }
         }
 
         if let Some(ref team) = owner_team {
             if team.len() > 100 {
-                return Err(crate::shared::error::Error::Validation(
-                    "负责团队长度不能超过100".to_string(),
-                ));
+                return Err(AppError::Validation("负责团队长度不能超过100".to_string()));
             }
         }
 
         if let Some(ref endpoint) = health_endpoint {
             if endpoint.len() > 200 {
-                return Err(crate::shared::error::Error::Validation(
+                return Err(AppError::Validation(
                     "健康检查端点长度不能超过200".to_string(),
                 ));
             }
@@ -164,10 +159,10 @@ impl Service {
         owner_team: Option<String>,
         base_url: Option<Url>,
         health_endpoint: Option<String>,
-    ) -> Result<(), crate::shared::error::Error> {
+    ) -> AppResult<()> {
         if let Some(name) = service_name {
             if name.is_empty() || name.len() > 100 {
-                return Err(crate::shared::error::Error::Validation(
+                return Err(AppError::Validation(
                     "服务名称长度必须在1-100之间".to_string(),
                 ));
             }
@@ -176,9 +171,7 @@ impl Service {
 
         if let Some(desc) = description {
             if desc.len() > 500 {
-                return Err(crate::shared::error::Error::Validation(
-                    "服务描述长度不能超过500".to_string(),
-                ));
+                return Err(AppError::Validation("服务描述长度不能超过500".to_string()));
             }
             self.description = Some(desc);
         } else {
@@ -187,9 +180,7 @@ impl Service {
 
         if let Some(team) = owner_team {
             if team.len() > 100 {
-                return Err(crate::shared::error::Error::Validation(
-                    "负责团队长度不能超过100".to_string(),
-                ));
+                return Err(AppError::Validation("负责团队长度不能超过100".to_string()));
             }
             self.owner_team = Some(team);
         } else {
@@ -204,7 +195,7 @@ impl Service {
 
         if let Some(endpoint) = health_endpoint {
             if endpoint.len() > 200 {
-                return Err(crate::shared::error::Error::Validation(
+                return Err(AppError::Validation(
                     "健康检查端点长度不能超过200".to_string(),
                 ));
             }

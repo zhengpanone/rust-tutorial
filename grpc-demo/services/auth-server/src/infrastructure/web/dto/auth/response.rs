@@ -1,7 +1,7 @@
-use crate::domain::identity::entities::user::User;
+use crate::domain::identity::models::user::User;
 use chrono::{DateTime, Utc};
+use common::enums::user::UserStatus;
 use common::security::jwt::claim::DeviceInfo;
-use common::security::jwt::claim::UserStatus;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -74,7 +74,7 @@ pub struct LoginResponse {
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct AuthUserResponse {
     /// 用户ID
-    pub id: String,
+    pub id: Uuid,
 
     /// 用户名
     pub username: String,

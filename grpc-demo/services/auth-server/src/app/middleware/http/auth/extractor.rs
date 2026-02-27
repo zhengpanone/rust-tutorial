@@ -1,7 +1,6 @@
 // src/app/middleware/http/auth/extractor.rs
 // 认证用户提取器
 
-use async_trait::async_trait;
 use axum::extract::FromRequestParts;
 use axum::http::request::Parts;
 use chrono::{DateTime, Utc};

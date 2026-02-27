@@ -1,6 +1,6 @@
+pub use crate::enums::user::UserStatus;
 use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::Type;
 use std::collections::HashMap;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -84,44 +84,6 @@ pub struct JwtUser {
     /// 用户元信息
     #[serde(skip_serializing_if = "HashMap::is_empty")]
     pub metadata: HashMap<String, serde_json::Value>,
-}
-
-/// 用户状态
-#[derive(Debug, Clone, Copy, PartialEq, Default, Eq, Serialize, Deserialize, Type, ToSchema)]
-#[sqlx(type_name = "user_status_enum", rename_all = "lowercase")] // 对应 Postgres 枚举类型名
-#[serde(rename_all = "lowercase")]
-pub enum UserStatus {
-    #[default] // 标记默认变体
-    #[serde(rename = "active")]
-    Active,
-
-    #[serde(rename = "inactive")]
-    Inactive,
-
-    #[serde(rename = "suspended")]
-    Suspended,
-
-    #[serde(rename = "locked")]
-    Locked,
-
-    #[serde(rename = "pending")]
-    Pending,
-
-    #[serde(rename = "deleted")]
-    Deleted,
-}
-
-impl std::fmt::Display for UserStatus {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            UserStatus::Active => write!(f, "active"),
-            UserStatus::Inactive => write!(f, "inactive"),
-            UserStatus::Suspended => write!(f, "suspended"),
-            UserStatus::Locked => write!(f, "locked"),
-            UserStatus::Pending => write!(f, "pending"),
-            UserStatus::Deleted => write!(f, "deleted"),
-        }
-    }
 }
 
 /// 设备信息
@@ -224,7 +186,7 @@ impl JwtClaim {
                 roles: vec![],
                 display_name: "".to_string(),
                 permissions: vec![],
-                status: UserStatus::Active,
+                status: UserStatus::Activate,
                 email_verified: false,
                 phone_verified: false,
                 metadata: HashMap::new(),

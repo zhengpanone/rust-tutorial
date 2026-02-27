@@ -1,12 +1,10 @@
-// src/domain/identity/entities/user.rs
+// src/domain/identity/models/user.rs
 
 use chrono::{DateTime, Utc};
-
-pub use common::security::jwt::claim::UserStatus;
+use common::enums::user::UserStatus;
 use serde::{Deserialize, Serialize};
+use sqlx::FromRow;
 use sqlx::types::Json;
-use sqlx::{FromRow, Type};
-use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::Validate;
 
@@ -19,7 +17,7 @@ use validator::Validate;
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, FromRow)]
 pub struct User {
     // 用户ID
-    pub id: String,
+    pub id: Uuid,
 
     /// 用户名
     #[validate(length(min = 3, max = 50, message = "用户名长度必须在3-50个字符之间"))]
@@ -79,11 +77,11 @@ pub struct User {
 
     /// 登录次数
     #[serde(default)]
-    pub login_count: i32,
+    pub login_count: i64, // 使用 i64 接收 bigint
 
     /// 失败登录次数
     #[serde(default)]
-    pub failed_login_count: i32,
+    pub failed_login_count: i64, // 使用 i64 接收 bigint
 
     /// 最后失败登录时间
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -92,6 +90,10 @@ pub struct User {
     /// 账户锁定时间
     #[serde(skip_serializing_if = "Option::is_none")]
     pub locked_at: Option<DateTime<Utc>>,
+
+    /// 账户锁定到期时间
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub locked_until: Option<DateTime<Utc>>,
 
     /// 账户锁定原因
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -134,4 +136,65 @@ pub struct User {
     /// 软删除时间
     #[serde(skip_serializing_if = "Option::is_none")]
     pub deleted_at: Option<DateTime<Utc>>,
+}
+
+impl User {
+    pub fn activate(&mut self) {
+        self.status = UserStatus::Activate;
+        self.updated_at = Utc::now();
+    }
+
+    pub fn deactivate(&mut self) {
+        self.status = UserStatus::Deactivate;
+        self.updated_at = Utc::now();
+    }
+
+    pub fn lock(&mut self, reason: &str, minutes: i64) {
+        self.status = UserStatus::Locked;
+        self.lock_reason = Some(reason.to_string());
+        self.locked_until = Some(Utc::now() + chrono::Duration::minutes(minutes));
+        self.locked_at = Some(Utc::now());
+        self.updated_at = Utc::now();
+    }
+
+    pub fn unlock(&mut self) {
+        if self.status == UserStatus::Locked {
+            self.status = UserStatus::Activate;
+            self.locked_at = None;
+            self.locked_until = None;
+            self.lock_reason = None;
+            self.failed_login_count = 0;
+            self.updated_at = Utc::now();
+        }
+    }
+
+    pub fn record_login_success(&mut self) {
+        self.last_login_at = Some(Utc::now());
+        self.login_count += 1;
+        self.failed_login_count = 0;
+        self.last_failed_login_at = None;
+        self.last_activity_at = Some(Utc::now());
+        if self.status == UserStatus::Locked {
+            self.unlock();
+        }
+        self.updated_at = Utc::now();
+    }
+
+    pub fn record_login_failure(&mut self) {
+        self.failed_login_count += 1;
+        if self.failed_login_count >= 5 {
+            self.lock("failed login count exceeded", 10);
+        }
+        self.last_failed_login_at = Some(Utc::now());
+        self.updated_at = Utc::now();
+    }
+
+    pub fn is_locked(&self) -> bool {
+        if self.status == UserStatus::Locked {
+            if let Some(locked_until) = self.locked_until {
+                return Utc::now() < locked_until;
+            }
+        }
+        false
+    }
 }

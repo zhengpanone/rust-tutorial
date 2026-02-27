@@ -1,5 +1,6 @@
+use crate::domain::identity::models::user::User;
 use chrono::{DateTime, Utc};
-use common::security::jwt::claim::UserStatus;
+use common::enums::user::UserStatus;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -21,7 +22,6 @@ pub struct CreateUserRequest {
         email(message = "邮箱格式不正确")
     )]
     pub email: String,
-
 
     /// 手机号
     #[validate(
@@ -56,14 +56,6 @@ pub struct CreateUserRequest {
     #[serde(default)]
     pub roles: Vec<String>,
 
-    /// 是否已验证邮箱
-    #[serde(default)]
-    pub email_verified: bool,
-
-    /// 是否已验证手机
-    #[serde(default)]
-    pub phone_verified: bool,
-
     /// 账户状态
     #[serde(default)]
     pub status: UserStatus,
@@ -71,6 +63,43 @@ pub struct CreateUserRequest {
     /// 元数据
     #[serde(skip_serializing_if = "Option::is_none")]
     pub metadata: Option<serde_json::Value>,
+}
+
+impl CreateUserRequest {
+    pub fn into_user(self, password_hash: &str) -> User {
+        let now = Utc::now();
+        User {
+            id: Uuid::new_v4(),
+            username: self.username,
+            email: self.email,
+            phone: self.phone,
+            password_hash: password_hash.to_string(),
+            display_name: self.display_name,
+            avatar_url: self.avatar_url,
+            roles: sqlx::types::Json(self.roles),
+            permissions: sqlx::types::Json(vec![]),
+            email_verified: false,
+            phone_verified: false,
+            status: self.status,
+            last_login_at: None,
+            login_count: 0,
+            failed_login_count: 0,
+            last_failed_login_at: None,
+            locked_at: None,
+            locked_until: None,
+            lock_reason: None,
+            password_changed_at: None,
+            password_expires_at: None,
+            is_first_login: false,
+            last_activity_at: None,
+            timezone: None,
+            language: None,
+            metadata: None,
+            created_at: now,
+            updated_at: now,
+            deleted_at: None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
@@ -86,8 +115,7 @@ pub struct UserFilter {
 
 /// 更新用户请求
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
-pub struct UpdateUserRequest{
-
+pub struct UpdateUserRequest {
     /// 用户名
     #[validate(
         length(min = 3, max = 50, message = "用户名长度必须在3-50个字符之间"),
@@ -115,7 +143,7 @@ pub struct UpdateUserRequest{
     /// 显示名称
     #[validate(length(max = 100, message = "显示名称长度不能超过100个字符"))]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub display_name:  Option<String>,
+    pub display_name: Option<String>,
 
     /// 头像URL
     #[validate(
@@ -145,7 +173,6 @@ pub struct UpdateUserRequest{
     /// 元数据
     #[serde(skip_serializing_if = "Option::is_none")]
     pub metadata: Option<serde_json::Value>,
-
 }
 
 /// 用户请求
