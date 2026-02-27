@@ -3,7 +3,7 @@
 use crate::domain::identity::entities::user::User;
 use crate::infrastructure::web::dto::user::request::{CreateUserRequest, UpdateUserRequest, UserFilter};
 use async_trait::async_trait;
-use common::error::AppError;
+use common::error::{AppError, AppResult};
 use common::web::pagination::PaginatedData;
 use common::web::response::Pagination;
 
@@ -11,10 +11,10 @@ use common::web::response::Pagination;
 #[async_trait]
 pub trait UserService: Send + Sync {
     /// 创建用户
-    async fn create_user(&self, request: CreateUserRequest) -> Result<User, AppError>;
+    async fn create_user(&self, request: CreateUserRequest) -> AppResult<User>;
 
     /// 获取单个用户
-    async fn get_user(&self, user_id: &str) -> Result<User, AppError>;
+    async fn get_user(&self, user_id: &str) -> Result<Option<User>, AppError>;
 
     /// 获取用户列表
     async fn list_users(

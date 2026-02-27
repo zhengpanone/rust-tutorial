@@ -135,30 +135,54 @@ impl AppBootstrap {
         let app_state = init_app_state(&self.config, infra_services.clone()).await?;
         Ok(app_state)
     }
+
     async fn start_server(&self, state: Arc<AppState>) -> Result<(), AppError> {
         info!("🌐 Starting servers...");
-        match (self.config.server.enable_http, self.config.grpc.enabled) {
+        match (self.config.enable_http, self.config.enabled_grpc) {
             (true, true) => {
-                // 启动混合服务器
-                todo!()
+                // 同时启动 HTTP 和 gRPC 服务器
+                let http_server =
+                    server::http::start_http_server(state.as_ref().clone(), &self.config.server);
+                let grpc_server =
+                    server::grpc::start_grpc_server(state.as_ref().clone(), &self.config.grpc);
+
+                // 使用 tokio::try_join! 同时运行两个服务器
+                tokio::try_join!(http_server, grpc_server)
+                    .map(|_| ())
+                    .map_err(|e| {
+                        error!("Server failed: {}", e);
+                        AppError::Internal(format!("Server failed: {}", e))
+                    })?;
+
+                Ok(())
             }
             (true, false) => {
                 // 只启动HTTP服务器
                 server::http::start_http_server(state.as_ref().clone(), &self.config.server)
-                    .await?;
+                    .await
+                    .map_err(|e| {
+                        error!("HTTP server failed: {}", e);
+                        AppError::Internal(format!("HTTP server failed: {}", e))
+                    })?;
+                Ok(())
             }
             (false, true) => {
                 // 只启动gRPC服务器
-                todo!()
+                server::grpc::start_grpc_server(state.as_ref().clone(), &self.config.grpc)
+                    .await
+                    .map_err(|e| {
+                        error!("gRPC server failed: {}", e);
+                        AppError::Internal(format!("gRPC server failed: {}", e))
+                    })?;
+                Ok(())
             }
             _ => {
                 error!("❌ No server enabled. Enable at least HTTP or gRPC server");
-                return Err(AppError::Internal(
+                Err(AppError::Internal(
                     "No server enabled. Enable at least HTTP or gRPC server".to_string(),
-                ));
+                ))
             }
         }
-        Ok(())
     }
 }
 
@@ -207,7 +231,7 @@ pub struct InfrastructureServices {
 impl InfrastructureServices {
     pub async fn new(config: &AppConfig) -> AppResult<Self> {
         let database_pool = database::init_database(&config.database).await?;
-        let (redis_client, redis_pool) = redis::init_redis(&config.redis).await?;
+        let (_redis_client, redis_pool) = redis::init_redis(&config.redis).await?;
 
         // // 3. 初始化消息队列
         // let message_queue = Self::init_message_queue(config, app_state.clone()).await?;

@@ -1,6 +1,5 @@
 use crate::app::config::config::AppConfig;
 
-use anyhow::Error;
 use chrono::{DateTime, NaiveDate, Utc};
 use dashmap::DashMap;
 
@@ -16,9 +15,8 @@ use std::{
     collections::HashMap,
     sync::{
         Arc,
-        atomic::{AtomicU16, AtomicU64},
+        atomic::{ AtomicU64},
     },
-    u64,
 };
 use tracing::info;
 use uuid::Uuid;
@@ -38,7 +36,7 @@ pub struct AppState {
 
 pub async fn init_app_state(
     config: &AppConfig,
-    infrastructure_services: InfrastructureServices,
+    _infrastructure_services: InfrastructureServices,
 ) -> AppResult<Arc<AppState>> {
     info!("🎯 Initializing application state...");
 
@@ -169,7 +167,7 @@ pub struct RequestStats {
     /// 平均响应时间
     pub avg_response_time: Arc<AtomicU64>,
     /// 接口调用统计
-    pub endponit_stats: Arc<DashMap<String, EndpointStats>>,
+    pub endpoint_stats: Arc<DashMap<String, EndpointStats>>,
     /// 用户请求统计
     pub user_stats: Arc<DashMap<String, UserRequestStats>>,
 }

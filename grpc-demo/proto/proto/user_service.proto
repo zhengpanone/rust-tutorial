@@ -14,13 +14,14 @@ option java_package = "com.zhengpanone.microservice.grpc.user";
 // 用户服务
 service UserServiceGrpc{
 
-
-
   // 创建用户
   rpc CreateUser(CreateUserRequest) returns (UserResponse);
 
   // 获取用户
   rpc GetUser (GetUserRequest) returns (UserResponse) ;
+
+  // 获取用户
+  rpc GetUserById (microservice.common.CommonId) returns (UserResponse) ;
 
   // 获取多个用户
   rpc GetUsers(GetUsersRequest) returns (GetUsersResponse);
@@ -135,9 +136,6 @@ enum UserRole {
   ADMIN = 2;
 }
 
-
-
-
 // 获取用户请求
 message GetUserRequest{
   oneof identifier {
@@ -175,7 +173,8 @@ message UpdateUserRequest{
   string timezone = 10;
   string locale = 11;
   string status_message = 12;
-  UpdateMask update_mask = 13;  // 字段更新掩码
+  string username = 13;
+  UpdateMask update_mask = 14;  // 字段更新掩码
 }
 
 // 字段更新掩码

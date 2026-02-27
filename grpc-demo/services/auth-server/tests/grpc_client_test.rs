@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod grpc_client_test {
-    use proto::user::GetUserRequest;
+    use proto::common::CommonId;
     use proto::user::user_service_grpc_client::UserServiceGrpcClient;
     use tonic::transport::Endpoint;
 
@@ -13,28 +13,30 @@ mod grpc_client_test {
 
         // let channel = Endpoint::from_static("http://user-service:50051")
         //     .connect()
-        //     .await?;
+        //     .await
+        //     .unwrap();
         //
         // let user_grpc = UserServiceGrpcClient::new(channel);
+
         // 2 构造请求
-        // let request = GetUserRequest {
-        //     id: "1".to_string(),
-        // };
-        // // 3 调用 RPC
-        // let response = client
-        //     .get_user(request)
-        //     .await
-        //     .expect("User not found!")
-        //     .into_inner();
-        //
-        // // 4 处理响应
-        // if let Some(user) = response.user {
-        //     println!("User info:");
-        //     println!("  id       = {}", user.id);
-        //     println!("  username = {}", user.username);
-        //     println!("  email    = {}", user.email);
-        // } else {
-        //     println!("User not found");
-        // }
+        let request = CommonId {
+            id: "ae63c5c2-d672-4e18-b78f-d353f870d44c".to_string(),
+        };
+        // 3 调用 RPC
+        let response = client
+            .get_user_by_id(request)
+            .await
+            .expect("User not found!")
+            .into_inner();
+
+        // 4 处理响应
+        if let Some(user) = response.user {
+            println!("User info:");
+            println!("  id       = {}", user.id);
+            println!("  username = {}", user.username);
+            println!("  email    = {}", user.email);
+        } else {
+            println!("User not found");
+        }
     }
 }

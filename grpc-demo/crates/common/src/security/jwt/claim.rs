@@ -88,7 +88,7 @@ pub struct JwtUser {
 
 /// 用户状态
 #[derive(Debug, Clone, Copy, PartialEq, Default, Eq, Serialize, Deserialize, Type, ToSchema)]
-#[sqlx(type_name = "user_status_enum", rename_all = "lowercase")] // 对应 Postgres 枚举类型名
+#[sqlx(type_name = "user_status_enum", rename_all = "snake_case")] // 对应 Postgres 枚举类型名
 #[serde(rename_all = "lowercase")]
 pub enum UserStatus {
     #[default] // 标记默认变体
@@ -120,6 +120,20 @@ impl std::fmt::Display for UserStatus {
             UserStatus::Locked => write!(f, "locked"),
             UserStatus::Pending => write!(f, "pending"),
             UserStatus::Deleted => write!(f, "deleted"),
+        }
+    }
+}
+
+impl UserStatus {
+    #[allow(dead_code)]
+    fn as_str(&self) -> &str {
+        match self {
+            UserStatus::Active => "active",
+            UserStatus::Inactive => "inactive",
+            UserStatus::Suspended => "suspended",
+            UserStatus::Locked => "locked",
+            UserStatus::Pending => "pending",
+            UserStatus::Deleted => "deleted",
         }
     }
 }

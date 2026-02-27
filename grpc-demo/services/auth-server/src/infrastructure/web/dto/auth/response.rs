@@ -74,7 +74,7 @@ pub struct LoginResponse {
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct AuthUserResponse {
     /// 用户ID
-    pub id: String,
+    pub id: Uuid,
 
     /// 用户名
     pub username: String,

@@ -55,12 +55,12 @@ impl ConfigValidator {
     /// 验证端口
     fn validate_ports(config: &AppConfig) -> Result<(), ConfigError> {
         // 检查HTTP端口是否在有效范围内
-        if config.server.enable_http {
+        if config.enable_http {
             Self::validate_port_range(config.server.port, "server.port")?;
         }
 
         // 检查gRPC端口是否在有效范围内
-        if config.grpc.enabled {
+        if config.enabled_grpc {
             Self::validate_port_range(config.grpc.port, "grpc.port")?;
         }
 
@@ -70,7 +70,7 @@ impl ConfigValidator {
         }
 
         // 检查端口冲突
-        if config.server.enable_http && config.grpc.enabled {
+        if config.enable_http && config.enabled_grpc {
             if config.server.port == config.grpc.port {
                 return Err(ConfigError::validation_error(
                     "HTTP and gRPC ports cannot be the same",
@@ -87,7 +87,7 @@ impl ConfigValidator {
         }
 
         // 检查健康检查端口冲突
-        if config.server.enable_http && config.server.enable_health_check {
+        if config.enable_http && config.server.enable_health_check {
             if config.server.port == config.server.health_check_port {
                 return Err(ConfigError::validation_error(
                     "HTTP port and health check port cannot be the same",
@@ -173,6 +173,7 @@ impl ConfigValidator {
     }
 
     /// 验证RabbitMQ URL
+    #[allow(dead_code)]
     fn validate_rabbitmq_url(url: &str) -> Result<(), ConfigError> {
         if url.is_empty() {
             return Err(ConfigError::missing_field("rabbitmq.url"));

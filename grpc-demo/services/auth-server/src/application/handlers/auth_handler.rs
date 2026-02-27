@@ -94,7 +94,7 @@ pub async fn register(
     Ok(ApiResponse::success(response))
 }
 
-async fn send_verification_email(email: &str, token: &str) -> Result<(), AppError> {
+async fn send_verification_email(email: &str, _token: &str) -> Result<(), AppError> {
     // 这里集成邮件服务
     // 例如使用lettre、sendgrid等
     info!("发送验证邮件到: {}", email);
@@ -158,8 +158,8 @@ pub async fn resend_verification() {}
     ),
     security(("bearer_auth" =[]))
 )]
-#[instrument(name = "http_logout", skip(state))]
-pub async fn logout(State(state): State<Arc<AppState>>) -> ApiResponse<()> {
+#[instrument(name = "http_logout", skip(_state))]
+pub async fn logout(State(_state): State<Arc<AppState>>) -> ApiResponse<()> {
     info!("退出成功");
     ApiResponse::success_empty("退出成功")
 }

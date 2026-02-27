@@ -1,10 +1,7 @@
-use std::collections::HashMap;
 // src/app/config/message_queue.rs
+use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
 use validator::Validate;
-// use crate::domain::common::value_objects::config::{ConfigScope, ConfigEnvironment};
-// use crate::application::services::config_app::ConfigApp;
 
 /// 消息队列配置
 #[derive(Debug, Clone, Serialize, Deserialize, Validate)]

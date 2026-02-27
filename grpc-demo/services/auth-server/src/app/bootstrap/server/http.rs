@@ -1,6 +1,5 @@
 // src/app/bootstrap/server/http.rs
 use crate::api::http::v1::v1_routes;
-use crate::app::config::cors::CorsConfig;
 use crate::app::config::server::ServerConfig;
 use crate::app::middleware::http::cors::cors_middleware;
 use crate::app::middleware::http::logging::request_logger;
@@ -110,12 +109,12 @@ pub async fn build_router(state: AppState) -> Router {
         .with_state(Arc::clone(&app_state));
 
     // 添加监控端点
-    if app_state.config.server.enable_metrics {
+    if app_state.config.enable_metrics {
         router = add_monitoring_endpoints(router)
     }
 
     // 添加 OpenAPI 文档路由
-    if app_state.config.server.enable_openapi {
+    if app_state.config.enable_openapi {
         router = add_openapi_docs(router);
     }
 

@@ -1,4 +1,3 @@
-use crate::app::bootstrap::server::jwt::JwtService;
 use crate::application::services::auth_service::AuthService;
 use crate::domain::identity::entities::user::User;
 use crate::domain::identity::repositories::user_repository::UserRepository;
@@ -8,7 +7,6 @@ use async_trait::async_trait;
 use common::error::AppError;
 use common::security::jwt::claim::JwtSession;
 use deadpool_redis::Pool as RedisPool;
-use sqlx::PgPool;
 use std::sync::Arc;
 
 /// 认证应用服务实现
@@ -39,8 +37,8 @@ impl AuthService for AuthServiceImpl {
     /// 用户认证
     async fn authenticate_user(
         &self,
-        username: String,
-        password: String,
+        _username: String,
+        _password: String,
     ) -> Result<User, AppError> {
         todo!()
     }

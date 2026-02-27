@@ -1,9 +1,6 @@
 // src/app/config/config.rs
 
-use super::{
-    database::DatabaseConfig, features::FeaturesConfig, message_queue::MessageQueueConfig,
-    server::ServerConfig,
-};
+use super::{database::DatabaseConfig, features::FeaturesConfig, server::ServerConfig};
 use crate::app::config::error::ConfigError;
 pub use crate::app::config::security::SecurityConfig;
 use crate::app::config::validator::ConfigValidator;
@@ -25,6 +22,18 @@ pub struct AppConfig {
 
     /// 应用版本
     pub version: String,
+
+    /// 是否启用OpenAPI
+    pub enable_openapi: bool,
+
+    /// 是否启用监控
+    pub enable_metrics: bool,
+
+    /// 是否启用HTTP
+    pub enable_http: bool,
+
+    /// 是否启用GRPC
+    pub enabled_grpc: bool,
 
     #[validate(length(min = 1))]
     pub environment: String,
@@ -48,15 +57,16 @@ pub struct AppConfig {
     pub debug: bool,
 
     pub server: ServerConfig,
+
+    /// gRPC配置
+    #[validate(nested)]
+    pub grpc: GrpcConfig,
+
     pub database: DatabaseConfig,
 
     pub logging: LogConfig,
 
     pub redis: Option<RedisConfig>,
-
-    /// gRPC配置
-    #[validate(nested)]
-    pub grpc: GrpcConfig,
 
     pub security: SecurityConfig,
 
@@ -302,7 +312,7 @@ fn log_configuration(config: &AppConfig) {
 
     // 记录启用的服务
     info!("🌐 Enabled services:");
-    info!("  HTTP server: {}", config.server.enable_http);
+    info!("  HTTP server: {}", config.enable_http);
     // info!("  gRPC server: {}", config.grpc.enabled);
     // info!("  Redis: {:?}", config.redis);
     // info!("  Message queue: {:?}", config.message_queue);
@@ -311,9 +321,6 @@ fn log_configuration(config: &AppConfig) {
 /// gRPC配置
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
 pub struct GrpcConfig {
-    /// 是否启用
-    pub enabled: bool,
-
     /// 主机地址
     #[validate(length(min = 1, message = "grpc地址不能为空"))]
     pub host: String,
@@ -437,6 +444,10 @@ impl Default for AppConfig {
         Self {
             name: "Auth-Server".to_string(),
             version: env!("CARGO_PKG_VERSION").to_string(),
+            enable_openapi: true,
+            enable_metrics: false,
+            enable_http: false,
+            enabled_grpc: true,
             environment: "development".to_string(),
             config_path: PathBuf::from("config/default.toml"),
             config_dir: PathBuf::from("config"),
@@ -493,9 +504,8 @@ impl Default for LogConfig {
 impl Default for GrpcConfig {
     fn default() -> Self {
         Self {
-            enabled: false,
-            host: "grpc://127.0.0.1:18080".to_string(),
-            port: 8080,
+            host: "127.0.0.1".to_string(),
+            port: 50051,
             address: "11111".to_string(),
             enable_reflection: false,
             enable_tls: false,

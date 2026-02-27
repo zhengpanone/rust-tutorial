@@ -174,7 +174,7 @@ pub async fn request_logger(
     // 提取响应信息
     let (parts, body) = response.into_parts();
     let status = parts.status;
-    let response_headers = parts.headers.clone();
+    let _response_headers = parts.headers.clone();
 
     // 记录响应体
     let (body, response_body) = if config.log_response_body {
@@ -421,7 +421,7 @@ impl ResponseLog {
 }
 
 /// 获取日志配置
-fn get_logger_config(state: &Arc<AppState>) -> RequestLoggerConfig {
+fn get_logger_config(_state: &Arc<AppState>) -> RequestLoggerConfig {
     // TODO 从配置或状态获取
     RequestLoggerConfig::default()
 }
@@ -564,11 +564,11 @@ fn log_slow_request(
 
 /// 记录指标
 fn record_metrics(
-    state: &AppState,
-    method: &HttpMethod,
-    uri: &Uri,
-    status: StatusCode,
-    duration: Duration,
+    _state: &AppState,
+    _method: &HttpMethod,
+    _uri: &Uri,
+    _status: StatusCode,
+    _duration: Duration,
 ) {
     // 记录请求统计
     // state.record_request(

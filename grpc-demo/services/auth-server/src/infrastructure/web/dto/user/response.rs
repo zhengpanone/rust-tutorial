@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
 use common::security::jwt::claim::UserStatus;
+use crate::domain::identity::entities::user::User;
 
 /// 用户响应
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema,Default)]
@@ -49,10 +50,10 @@ pub struct UserResponse {
     pub last_login_at: Option<DateTime<Utc>>,
 
     /// 登录次数
-    pub login_count: u32,
+    pub login_count: i64,
 
     /// 失败登录次数
-    pub failed_login_count: u32,
+    pub failed_login_count: i64,
 
     /// 最后失败登录时间
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -67,4 +68,29 @@ pub struct UserResponse {
     /// 元数据
     #[serde(skip_serializing_if = "Option::is_none")]
     pub metadata: Option<serde_json::Value>,
+}
+
+impl From<User> for UserResponse {
+    fn from(user: User) -> Self {
+        Self {
+            id: user.id,
+            username: user.username,
+            email: user.email,
+            display_name: user.display_name,
+            avatar_url: user.avatar_url,
+            phone: user.phone,
+            roles: user.roles.0,             // 这里 .0 拿到 Vec<String>
+            permissions: user.permissions.0, // 这里 .0 拿到 Vec<String>
+            email_verified: user.email_verified,
+            phone_verified: user.phone_verified,
+            status: user.status,
+            last_login_at: user.last_login_at,
+            login_count: user.login_count,
+            failed_login_count: user.failed_login_count,
+            last_failed_login_at: user.last_failed_login_at,
+            created_at: user.created_at,
+            updated_at: user.updated_at,
+            metadata: user.metadata,
+        }
+    }
 }

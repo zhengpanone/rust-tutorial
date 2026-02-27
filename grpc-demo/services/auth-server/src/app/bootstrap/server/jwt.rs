@@ -32,6 +32,7 @@ fn generate_or_load_jwt_secret(config: &SecurityConfig) -> Result<String, AppErr
 }
 
 /// 从文件中加载JWT密钥
+#[allow(dead_code)]
 fn load_jwt_secret_from_file(file_path: &str) -> Result<String, AppError> {
     info!("📁 Loading JWT secret from file: {}", file_path);
     let path = Path::new(file_path);
@@ -142,7 +143,7 @@ pub struct JwtService {
     config: Arc<JwtConfig>,
     redis_client: Option<Arc<deadpool_redis::Pool>>,
     encoding_key: Arc<RwLock<EncodingKey>>,
-    decoding_key: Arc<RwLock<DecodingKey>>,
+    _decoding_key: Arc<RwLock<DecodingKey>>,
 }
 
 impl JwtService {
@@ -214,7 +215,7 @@ impl JwtService {
             config: Arc::new(config),
             redis_client,
             encoding_key: Arc::new(RwLock::new(encoding_key)),
-            decoding_key: Arc::new(RwLock::new(decoding_key)),
+            _decoding_key: Arc::new(RwLock::new(decoding_key)),
         })
     }
 
@@ -329,6 +330,7 @@ impl JwtService {
     }
 
     /// 检查刷新令牌是否有效
+    #[allow(dead_code)]
     async fn is_refresh_token_valid(&self, token_id: String) -> Result<bool, AppError> {
         if let Some(redis_client) = &self.redis_client {
             let mut conn = redis_client
@@ -401,7 +403,7 @@ impl JwtService {
         Ok(false)
     }
     /// 获取用户信息用于刷新令牌
-    async fn get_user_for_refresh(&self, token_id: String) -> Result<JwtUser, AppError> {
+    async fn get_user_for_refresh(&self, _token_id: String) -> Result<JwtUser, AppError> {
         // TODO 从数据库中获取用户信息
         Ok(JwtUser {
             id: "1".to_string(),

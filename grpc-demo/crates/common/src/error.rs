@@ -126,6 +126,22 @@ impl AppError {
         }
     }
 
+    /// 转换为 tonic::Status
+    pub fn to_tonic_status(&self) -> tonic::Status {
+        let code = match self {
+            AppError::NotFound(_) => tonic::Code::NotFound,
+            AppError::AlreadyExists(_) => tonic::Code::AlreadyExists,
+            AppError::Validation(_) => tonic::Code::InvalidArgument,
+            AppError::Authentication(_) => tonic::Code::Unauthenticated,
+            AppError::Authorization(_) => tonic::Code::PermissionDenied,
+            AppError::InvalidArgument(_) => tonic::Code::InvalidArgument,
+            AppError::RateLimit(_) => tonic::Code::ResourceExhausted,
+            AppError::Timeout(_) => tonic::Code::DeadlineExceeded,
+            _ => tonic::Code::Internal,
+        };
+        tonic::Status::new(code, self.to_string())
+    }
+
     pub fn error_code(&self) -> &'static str {
         match self {
             AppError::Authentication(_) => "AUTH_ERROR",

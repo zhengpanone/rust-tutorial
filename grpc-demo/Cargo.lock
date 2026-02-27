@@ -771,6 +771,7 @@ dependencies = [
  "serde_with",
  "sqlx",
  "thiserror 2.0.18",
+ "tonic",
  "tracing",
  "utoipa",
  "uuid",

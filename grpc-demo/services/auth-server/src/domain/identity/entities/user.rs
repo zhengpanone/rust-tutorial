@@ -1,12 +1,10 @@
 // src/domain/identity/entities/user.rs
 
 use chrono::{DateTime, Utc};
-
 pub use common::security::jwt::claim::UserStatus;
 use serde::{Deserialize, Serialize};
 use sqlx::types::Json;
-use sqlx::{FromRow, Type};
-use utoipa::ToSchema;
+use sqlx::{FromRow};
 use uuid::Uuid;
 use validator::Validate;
 
@@ -19,7 +17,7 @@ use validator::Validate;
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, FromRow)]
 pub struct User {
     // 用户ID
-    pub id: String,
+    pub id: Uuid,
 
     /// 用户名
     #[validate(length(min = 3, max = 50, message = "用户名长度必须在3-50个字符之间"))]
@@ -79,11 +77,11 @@ pub struct User {
 
     /// 登录次数
     #[serde(default)]
-    pub login_count: i32,
+    pub login_count: i64, // 使用 i64 接收 bigint
 
     /// 失败登录次数
     #[serde(default)]
-    pub failed_login_count: i32,
+    pub failed_login_count: i64, // 使用 i64 接收 bigint
 
     /// 最后失败登录时间
     #[serde(skip_serializing_if = "Option::is_none")]

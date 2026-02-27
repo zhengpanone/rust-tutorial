@@ -16,7 +16,7 @@ DROP TABLE IF EXISTS sys_user;
 CREATE TABLE IF NOT EXISTS sys_user
 (
     -- 主键
-    id                   VARCHAR(36) PRIMARY KEY   DEFAULT gen_random_uuid(),
+    id                   UUID PRIMARY KEY   DEFAULT gen_random_uuid(),
 
     -- 基本信息
     username             VARCHAR(50)      NOT NULL,

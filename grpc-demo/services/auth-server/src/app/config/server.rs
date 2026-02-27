@@ -1,18 +1,11 @@
+use crate::app::config::cors::CorsConfig;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use validator::Validate;
-use crate::app::config::cors::CorsConfig;
 
 /// 服务器配置
 #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
 pub struct ServerConfig {
-    /// 是否启用OpenAPI
-    pub enable_openapi: bool,
-
-    /// 是否启用监控
-    pub enable_metrics: bool,
-    /// 是否启用
-    pub enable_http: bool,
     /// 主机地址
     #[validate(length(min = 1, message = "主机地址不能为空"))]
     pub host: String,
@@ -23,7 +16,6 @@ pub struct ServerConfig {
     /// 是否启用CORS
     pub enable_cors: bool,
     pub cors: Option<CorsConfig>,
-
 
     /// 请求超时时间(秒)
     #[validate(range(min = 1, max = 300, message = "请求超时时间必须在1-300秒之间"))]
@@ -53,14 +45,11 @@ impl Default for ServerConfig {
         Self {
             host: "127.0.0.1".to_string(),
             port: 8080,
-            enable_http: true,
             enable_cors: true,
             cors: None,
             request_timeout_secs: 10,
-            enable_openapi: true,
             enable_health_check: true,
             health_check_port: 8888,
-            enable_metrics: true,
             body_limit: 10000,
             enable_hybrid: false,
         }
