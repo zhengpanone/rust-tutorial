@@ -1,4 +1,4 @@
-// src/domain/services/repositories/api_repository.rs
+// src/domain/services/repository/api_repository.rs
 use async_trait::async_trait;
 
 use super::super::{

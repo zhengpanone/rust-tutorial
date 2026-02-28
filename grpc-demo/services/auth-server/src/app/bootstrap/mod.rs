@@ -1,7 +1,7 @@
 use crate::app::config::config::AppConfig;
 use crate::app::setup::AppServices;
 use crate::app::state::{AppState, init_app_state};
-use crate::domain::identity::repositories::user_repository::UserRepository;
+use crate::domain::identity::repository::user_repository::UserRepository;
 use crate::infrastructure::persistence::repositories::user_repository_impl::UserRepositoryImpl;
 use common::error::{AppError, AppResult};
 use std::error::Error;

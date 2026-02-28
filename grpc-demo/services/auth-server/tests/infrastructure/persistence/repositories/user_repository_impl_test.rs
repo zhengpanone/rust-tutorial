@@ -3,7 +3,7 @@ mod tests {
     use auth_server::app::bootstrap::database::init_database;
     use auth_server::app::config::loader::ConfigLoader;
     use auth_server::domain::identity::models::user::User;
-    use auth_server::domain::identity::repositories::user_repository::UserRepository;
+    use auth_server::domain::identity::repository::user_repository::UserRepository;
     use auth_server::infrastructure::persistence::repositories::user_repository_impl::UserRepositoryImpl;
     use chrono::Utc;
     use common::enums::user::UserStatus;

@@ -1,13 +1,17 @@
 // src/application/services/user_service
 
 use crate::domain::identity::models::user::User;
-use crate::infrastructure::web::dto::user::request::{CreateUserRequest, UpdateUserRequest, UserFilter};
+use crate::infrastructure::web::dto::user::request::{
+    CreateUserRequest, UpdateUserRequest, UserFilter,
+};
 use async_trait::async_trait;
 use common::error::{AppError, AppResult};
 use common::web::pagination::PaginatedData;
 use common::web::response::Pagination;
 
 /// 用户服务 trait
+/// 应用服务 - 协调多个聚合、基础设施组件
+/// 职责：事务管理、事件发布、外部服务调用
 #[async_trait]
 pub trait UserService: Send + Sync {
     /// 创建用户

@@ -1,4 +1,4 @@
-// src/domain/services/repositories/service_repository_back
+// src/domain/services/repository/service_repository_back
 use async_trait::async_trait;
 
 use super::super::{

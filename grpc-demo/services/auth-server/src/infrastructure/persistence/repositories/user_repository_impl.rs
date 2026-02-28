@@ -1,10 +1,11 @@
 use crate::domain::identity::models::user::User;
-use crate::domain::identity::repositories::user_repository::UserRepository;
+use crate::domain::identity::repository::user_repository::UserRepository;
 use async_trait::async_trait;
 use common::error::{AppError, AppResult};
 use sqlx::types::Json;
 use std::sync::Arc;
 
+use crate::domain::identity::{Email, Username};
 use sqlx::PgPool;
 use tracing::{debug, error};
 use uuid::Uuid;
@@ -76,14 +77,14 @@ impl UserRepository for UserRepositoryImpl {
         Ok(user)
     }
     /// 通过用户名查找用户
-    async fn find_by_username(&self, username: &str) -> AppResult<Option<User>> {
+    async fn find_by_username(&self, username: &Username) -> AppResult<Option<User>> {
         debug!("查找用户: username={}", username);
 
         let row = sqlx::query!(
             r#"
             SELECT id FROM sys_user WHERE username = $1 AND deleted_at IS NULL
             "#,
-            username
+            username.as_str()
         )
         .fetch_optional(&self.pool)
         .await
@@ -98,14 +99,14 @@ impl UserRepository for UserRepositoryImpl {
     }
 
     /// 通过邮箱查找用户
-    async fn find_by_email(&self, email: &str) -> AppResult<Option<User>> {
+    async fn find_by_email(&self, email: &Email) -> AppResult<Option<User>> {
         debug!("查找用户: email={}", email);
 
         let row = sqlx::query!(
             r#"
             SELECT id FROM sys_user WHERE email = $1 AND deleted_at IS NULL
             "#,
-            email
+            email.as_str()
         )
         .fetch_optional(&self.pool)
         .await

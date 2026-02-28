@@ -1,4 +1,5 @@
-# 创建 workspace
+# DDD 项目
+## 创建 workspace
 ```shell
 mkdir grpc-service && cd grpc-service
 cargo new --lib proto
@@ -8,7 +9,7 @@ cargo new --bin cli-client
 ```
 
 
-# 根目录 Cargo.toml
+## 根目录 Cargo.toml
 ```shell
 cat > Cargo.toml << 'EOF'
 [workspace]
@@ -17,7 +18,7 @@ resolver = "2"
 EOF
 ```
 
-# 运行项目
+## 运行项目
 ```shell
 
 # 原来的命令
@@ -36,20 +37,14 @@ cargo watch -x 'clean -p auth-server' -x 'run -p auth-server'
 # 验证
 grpcurl -plaintext 127.0.0.1:50051 list
 ```
-# 项目结构
+
+## 项目结构
 
 ```text
-microservice-manager/
+auth-server/
 ├── src/
 │   ├── main.rs                          # 应用入口
 │   ├── lib.rs                          # 库入口
-│   │
-│   ├── app/                            # 应用层
-│   │   ├── bootstrap/                  # 应用引导
-│   │   ├── config/                     # 配置管理
-│   │   ├── state/                      # 应用状态
-│   │   ├── middleware/                 # 中间件
-│   │   └── error/                      # 应用错误
 │   │
 │   ├── api/                            # API层 (HTTP接口)
 │   │   ├── http/                      # HTTP API
@@ -72,6 +67,13 @@ microservice-manager/
 │   │   ├── response/                   # API响应格式
 │   │   └── error/                      # API错误处理
 │   │
+│   ├── app/                            # 应用层
+│   │   ├── bootstrap/                  # 应用引导
+│   │   ├── config/                     # 配置管理
+│   │   ├── state/                      # 应用状态
+│   │   ├── middleware/                 # 中间件
+│   │   └── error/                      # 应用错误
+│   │
 │   ├── domain/                         # 领域层
 │   │   ├── common/                     # 公共领域
 │   │   ├── identity/                   # 身份认证子域
@@ -90,14 +92,84 @@ microservice-manager/
 │   │   ├── cache/                      # 缓存
 │   │   ├── message_queue/              # 消息队列
 │   │   └── external/                   # 外部服务
-│   │
-│   └── shared/                         # 共享内核
-│       ├── utils/                      # 工具类
-│       ├── validation/                 # 验证
-│       ├── security/                   # 安全
-│       └── logging/                    # 日志
+
 
 ```
+
+## 应用服务和领域服务的区别
+
+## 🎯 应用服务 vs 领域服务 对比
+
+| 对比维度 | 应用服务 (Application Service) | 领域服务 (Domain Service) |
+|-----------|----------------------------------|-----------------------------|
+| **所在层级** | 应用层 (Application Layer) | 领域层 (Domain Layer) |
+| **核心职责** | 用例协调、事务控制、整合多个组件 | 核心业务规则、复杂领域逻辑 |
+| **依赖对象** | 仓储、领域服务、消息队列、缓存、外部 API | 仓储、聚合根、值对象 |
+| **典型方法** | `register_user()`<br>`update_profile()` | `is_email_registered()`<br>`calculate_reputation()` |
+| **状态特征** | 通常无状态 | 可无状态，也可有状态 |
+| **可测试性** | 需 Mock 仓储、缓存、消息队列、外部服务 | 只需 Mock 仓储，专注业务规则 |
+| **输入类型** | DTO（如 CreateUserRequest） | 领域对象（User、Email、UserId） |
+| **输出类型** | DTO | 领域对象或标量值 |
+| **事务边界** | 负责定义和管理事务 | 不关心事务 |
+| **事件处理** | 负责发布领域事件 | 只产生事件，不发布 |
+| **关注点** | “做什么”——完成一个用例 | “怎么做”——实现业务规则 |
+| **是否可直接暴露给接口层** | 是 | 否（应通过应用服务间接调用） |
+
+
+## 🎨 设计原则
+
+### 📁 应用服务 (Application Service) 应该：
+
+- **薄 (Thin)**  
+  只负责流程协调，不实现核心业务规则。
+
+- **无状态 (Stateless)**  
+  不保存业务状态，只编排调用流程。
+
+- **事务边界 (Transaction Boundary)**  
+  明确定义事务范围（如一个用例一个事务）。
+
+- **依赖注入 (Dependency Injection)**  
+  通过构造函数注入仓储、领域服务、缓存、消息组件等依赖。
+
+- **错误处理 (Error Mapping)**  
+  将领域错误转换为应用层错误（例如 `DomainError → AppError`）。
+
+---
+
+### 📁 领域服务 (Domain Service) 应该：
+
+- **纯业务逻辑 (Pure Business Logic)**  
+  专注实现核心领域规则。
+
+- **高可测试性 (Highly Testable)**  
+  不依赖外部基础设施（或仅依赖仓储接口），易于单元测试。
+
+- **与聚合协作 (Collaborate with Aggregates)**  
+  操作领域对象（聚合根、值对象）。
+
+- **无副作用 (No Direct Side Effects)**  
+  不直接调用外部系统；通过聚合产生领域事件。
+
+- **单一职责 (Single Responsibility)**  
+  每个领域服务只处理一个特定的业务概念。
+
+---
+
+## ✅ 这种分离带来的好处
+
+- **可测试性 (Testability)**  
+  领域服务可以独立进行单元测试。
+
+- **可维护性 (Maintainability)**  
+  核心业务逻辑集中在领域层，修改成本低。
+
+- **可扩展性 (Scalability / Extensibility)**  
+  应用层可以轻松增加缓存、消息队列、外部 API 等基础设施。
+
+- **清晰分层 (Clear Separation of Concerns)**  
+  每一层职责明确，依赖方向清晰。
+
 
 # TODO
 

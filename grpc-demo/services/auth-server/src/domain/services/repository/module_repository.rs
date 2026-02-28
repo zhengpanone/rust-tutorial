@@ -1,4 +1,4 @@
-// src/domain/services/repositories/module_repository.rs
+// src/domain/services/repository/module_repository.rs
 use async_trait::async_trait;
 
 use super::super::models::{
