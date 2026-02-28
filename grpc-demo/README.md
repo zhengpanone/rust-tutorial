@@ -22,7 +22,7 @@ EOF
 ```shell
 
 # 原来的命令
-cargo run -p user-server
+cargo run -p auth-server
 
 # 使用 cargo watch
 cargo watch -x 'run -p auth-server'

@@ -1,6 +1,5 @@
 use crate::app::config::cors::CorsConfig;
 use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
 use validator::Validate;
 
 /// 服务器配置

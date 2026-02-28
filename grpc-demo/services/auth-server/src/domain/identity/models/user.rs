@@ -7,6 +7,26 @@ use sqlx::FromRow;
 use sqlx::types::Json;
 use uuid::Uuid;
 use validator::Validate;
+use common::error::{AppError, AppResult};
+use crate::domain::services::models::service::ServiceId;
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UserId(String);
+
+impl UserId {
+    pub fn new() -> Self {
+        Self(Uuid::new_v4().to_string())
+    }
+    pub fn parse(id: &str) -> AppResult<Self> {
+        Uuid::parse_str(id)
+            .map_err(|_| AppError::InvalidId(id.to_string()))
+            .map(|_| Self(id.to_string()))
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
 
 /// 用户实体
 /// 派生特性说明

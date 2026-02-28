@@ -40,7 +40,8 @@ pub struct DatabaseConfig {
 impl Default for DatabaseConfig {
     fn default() -> Self {
         Self {
-            url: "postgres://postgres:postgres@127.0.0.1:30432/gmall".to_string(),
+            // url: "postgres://postgres:postgres@127.0.0.1:30432/gmall".to_string(),
+            url: "postgres://postgres:postgres@127.0.0.1:15432/gmall".to_string(),
             max_connections: 20,
             min_connections: 5,
             acquire_timeout_secs: 0,

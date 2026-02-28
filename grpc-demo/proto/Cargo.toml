@@ -16,6 +16,8 @@ tonic-prost = { workspace = true }
 
 # 构建依赖
 [build-dependencies]
+tonic-build = "0.14.1"
+protoc-bin-vendored = "3"
 tonic-prost-build = "0.14.1"
 
 [features]

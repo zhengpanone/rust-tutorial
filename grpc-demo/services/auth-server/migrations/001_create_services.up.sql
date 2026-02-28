@@ -1,158 +1,158 @@
--- migrations/001_create_services.up.sql
--- 创建枚举类型
-CREATE TYPE service_type AS ENUM ('business', 'support', 'data', 'gateway', 'monitor');
-CREATE TYPE service_status AS ENUM ('enabled', 'disabled', 'maintenance');
-CREATE TYPE api_method AS ENUM ('GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS');
-CREATE TYPE api_status AS ENUM ('published', 'draft', 'deprecated');
-
--- 服务表
-CREATE TABLE services (
-    id VARCHAR(50) PRIMARY KEY,
-    service_code VARCHAR(50) NOT NULL,
-    service_name VARCHAR(100) NOT NULL,
-    service_type service_type NOT NULL DEFAULT 'business',
-    service_desc TEXT,
-    owner_team VARCHAR(100),
-    base_url VARCHAR(200),
-    status service_status NOT NULL DEFAULT 'enabled',
-    health_endpoint VARCHAR(200),
-    is_internal BOOLEAN DEFAULT FALSE,
-    modules_count INT DEFAULT 0,
-    apis_count INT DEFAULT 0,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    
-    UNIQUE(service_code),
-    INDEX idx_service_code (service_code),
-    INDEX idx_service_type (service_type),
-    INDEX idx_status (status),
-    INDEX idx_is_internal (is_internal)
-);
-
-COMMENT ON TABLE services IS '微服务定义表';
-COMMENT ON COLUMN services.service_code IS '服务编码，唯一标识';
-COMMENT ON COLUMN services.service_name IS '服务名称';
-COMMENT ON COLUMN services.service_type IS '服务类型：business-业务服务, support-支撑服务, data-数据服务, gateway-网关服务, monitor-监控服务';
-COMMENT ON COLUMN services.service_desc IS '服务描述';
-COMMENT ON COLUMN services.owner_team IS '负责团队';
-COMMENT ON COLUMN services.base_url IS '服务基础URL';
-COMMENT ON COLUMN services.status IS '服务状态：enabled-启用, disabled-停用, maintenance-维护中';
-COMMENT ON COLUMN services.health_endpoint IS '健康检查端点';
-COMMENT ON COLUMN services.is_internal IS '是否内部服务';
-COMMENT ON COLUMN services.modules_count IS '模块数量';
-COMMENT ON COLUMN services.apis_count IS 'API数量';
-
--- 模块表
-CREATE TABLE service_modules (
-    id VARCHAR(50) PRIMARY KEY,
-    service_id VARCHAR(50) NOT NULL,
-    module_code VARCHAR(50) NOT NULL,
-    module_name VARCHAR(100) NOT NULL,
-    module_desc TEXT,
-    apis_count INT DEFAULT 0,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    
-    FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE,
-    UNIQUE(service_id, module_code),
-    INDEX idx_service_id (service_id),
-    INDEX idx_module_code (module_code)
-);
-
-COMMENT ON TABLE service_modules IS '服务模块表';
-COMMENT ON COLUMN service_modules.service_id IS '所属服务ID';
-COMMENT ON COLUMN service_modules.module_code IS '模块编码，在服务内唯一';
-COMMENT ON COLUMN service_modules.module_name IS '模块名称';
-COMMENT ON COLUMN service_modules.module_desc IS '模块描述';
-COMMENT ON COLUMN service_modules.apis_count IS 'API数量';
-
--- API接口表
-CREATE TABLE service_apis (
-    id VARCHAR(50) PRIMARY KEY,
-    module_id VARCHAR(50) NOT NULL,
-    api_path VARCHAR(200) NOT NULL,
-    api_name VARCHAR(100) NOT NULL,
-    method api_method NOT NULL DEFAULT 'GET',
-    api_desc TEXT,
-    request_example TEXT,
-    response_example TEXT,
-    status api_status NOT NULL DEFAULT 'draft',
-    deprecated_at TIMESTAMP WITH TIME ZONE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    
-    FOREIGN KEY (module_id) REFERENCES service_modules(id) ON DELETE CASCADE,
-    UNIQUE(module_id, method, api_path),
-    INDEX idx_module_id (module_id),
-    INDEX idx_method (method),
-    INDEX idx_status (status),
-    INDEX idx_deprecated_at (deprecated_at)
-);
-
-COMMENT ON TABLE service_apis IS 'API接口表';
-COMMENT ON COLUMN service_apis.module_id IS '所属模块ID';
-COMMENT ON COLUMN service_apis.api_path IS 'API路径';
-COMMENT ON COLUMN service_apis.api_name IS 'API名称';
-COMMENT ON COLUMN service_apis.method IS 'HTTP方法';
-COMMENT ON COLUMN service_apis.api_desc IS 'API描述';
-COMMENT ON COLUMN service_apis.request_example IS '请求示例';
-COMMENT ON COLUMN service_apis.response_example IS '响应示例';
-COMMENT ON COLUMN service_apis.status IS 'API状态：published-已发布, draft-草稿, deprecated-已废弃';
-COMMENT ON COLUMN service_apis.deprecated_at IS '废弃时间';
-
--- 创建函数和触发器来更新计数
-CREATE OR REPLACE FUNCTION update_service_modules_count()
-RETURNS TRIGGER AS $$
-BEGIN
-    IF TG_OP = 'INSERT' THEN
-        UPDATE services 
-        SET modules_count = modules_count + 1,
-            updated_at = CURRENT_TIMESTAMP
-        WHERE id = NEW.service_id;
-    ELSIF TG_OP = 'DELETE' THEN
-        UPDATE services 
-        SET modules_count = modules_count - 1,
-            updated_at = CURRENT_TIMESTAMP
-        WHERE id = OLD.service_id;
-    END IF;
-    RETURN NULL;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER service_modules_count_trigger
-AFTER INSERT OR DELETE ON service_modules
-FOR EACH ROW EXECUTE FUNCTION update_service_modules_count();
-
-CREATE OR REPLACE FUNCTION update_module_apis_count()
-RETURNS TRIGGER AS $$
-BEGIN
-    IF TG_OP = 'INSERT' THEN
-        UPDATE service_modules 
-        SET apis_count = apis_count + 1,
-            updated_at = CURRENT_TIMESTAMP
-        WHERE id = NEW.module_id;
-        
-        UPDATE services s
-        SET apis_count = apis_count + 1,
-            updated_at = CURRENT_TIMESTAMP
-        FROM service_modules m
-        WHERE s.id = m.service_id AND m.id = NEW.module_id;
-    ELSIF TG_OP = 'DELETE' THEN
-        UPDATE service_modules 
-        SET apis_count = apis_count - 1,
-            updated_at = CURRENT_TIMESTAMP
-        WHERE id = OLD.module_id;
-        
-        UPDATE services s
-        SET apis_count = apis_count - 1,
-            updated_at = CURRENT_TIMESTAMP
-        FROM service_modules m
-        WHERE s.id = m.service_id AND m.id = OLD.module_id;
-    END IF;
-    RETURN NULL;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER module_apis_count_trigger
-AFTER INSERT OR DELETE ON service_apis
-FOR EACH ROW EXECUTE FUNCTION update_module_apis_count();
+-- -- migrations/001_create_services.up.sql
+-- -- 创建枚举类型
+-- CREATE TYPE service_type AS ENUM ('business', 'support', 'data', 'gateway', 'monitor');
+-- CREATE TYPE service_status AS ENUM ('enabled', 'disabled', 'maintenance');
+-- CREATE TYPE api_method AS ENUM ('GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS');
+-- CREATE TYPE api_status AS ENUM ('published', 'draft', 'deprecated');
+--
+-- -- 服务表
+-- CREATE TABLE services (
+--     id VARCHAR(50) PRIMARY KEY,
+--     service_code VARCHAR(50) NOT NULL,
+--     service_name VARCHAR(100) NOT NULL,
+--     service_type service_type NOT NULL DEFAULT 'business',
+--     service_desc TEXT,
+--     owner_team VARCHAR(100),
+--     base_url VARCHAR(200),
+--     status service_status NOT NULL DEFAULT 'enabled',
+--     health_endpoint VARCHAR(200),
+--     is_internal BOOLEAN DEFAULT FALSE,
+--     modules_count INT DEFAULT 0,
+--     apis_count INT DEFAULT 0,
+--     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+--     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+--
+--     UNIQUE(service_code),
+--     INDEX idx_service_code (service_code),
+--     INDEX idx_service_type (service_type),
+--     INDEX idx_status (status),
+--     INDEX idx_is_internal (is_internal)
+-- );
+--
+-- COMMENT ON TABLE services IS '微服务定义表';
+-- COMMENT ON COLUMN services.service_code IS '服务编码，唯一标识';
+-- COMMENT ON COLUMN services.service_name IS '服务名称';
+-- COMMENT ON COLUMN services.service_type IS '服务类型：business-业务服务, support-支撑服务, data-数据服务, gateway-网关服务, monitor-监控服务';
+-- COMMENT ON COLUMN services.service_desc IS '服务描述';
+-- COMMENT ON COLUMN services.owner_team IS '负责团队';
+-- COMMENT ON COLUMN services.base_url IS '服务基础URL';
+-- COMMENT ON COLUMN services.status IS '服务状态：enabled-启用, disabled-停用, maintenance-维护中';
+-- COMMENT ON COLUMN services.health_endpoint IS '健康检查端点';
+-- COMMENT ON COLUMN services.is_internal IS '是否内部服务';
+-- COMMENT ON COLUMN services.modules_count IS '模块数量';
+-- COMMENT ON COLUMN services.apis_count IS 'API数量';
+--
+-- -- 模块表
+-- CREATE TABLE service_modules (
+--     id VARCHAR(50) PRIMARY KEY,
+--     service_id VARCHAR(50) NOT NULL,
+--     module_code VARCHAR(50) NOT NULL,
+--     module_name VARCHAR(100) NOT NULL,
+--     module_desc TEXT,
+--     apis_count INT DEFAULT 0,
+--     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+--     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+--
+--     FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE,
+--     UNIQUE(service_id, module_code),
+--     INDEX idx_service_id (service_id),
+--     INDEX idx_module_code (module_code)
+-- );
+--
+-- COMMENT ON TABLE service_modules IS '服务模块表';
+-- COMMENT ON COLUMN service_modules.service_id IS '所属服务ID';
+-- COMMENT ON COLUMN service_modules.module_code IS '模块编码，在服务内唯一';
+-- COMMENT ON COLUMN service_modules.module_name IS '模块名称';
+-- COMMENT ON COLUMN service_modules.module_desc IS '模块描述';
+-- COMMENT ON COLUMN service_modules.apis_count IS 'API数量';
+--
+-- -- API接口表
+-- CREATE TABLE service_apis (
+--     id VARCHAR(50) PRIMARY KEY,
+--     module_id VARCHAR(50) NOT NULL,
+--     api_path VARCHAR(200) NOT NULL,
+--     api_name VARCHAR(100) NOT NULL,
+--     method api_method NOT NULL DEFAULT 'GET',
+--     api_desc TEXT,
+--     request_example TEXT,
+--     response_example TEXT,
+--     status api_status NOT NULL DEFAULT 'draft',
+--     deprecated_at TIMESTAMP WITH TIME ZONE,
+--     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+--     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+--
+--     FOREIGN KEY (module_id) REFERENCES service_modules(id) ON DELETE CASCADE,
+--     UNIQUE(module_id, method, api_path),
+--     INDEX idx_module_id (module_id),
+--     INDEX idx_method (method),
+--     INDEX idx_status (status),
+--     INDEX idx_deprecated_at (deprecated_at)
+-- );
+--
+-- COMMENT ON TABLE service_apis IS 'API接口表';
+-- COMMENT ON COLUMN service_apis.module_id IS '所属模块ID';
+-- COMMENT ON COLUMN service_apis.api_path IS 'API路径';
+-- COMMENT ON COLUMN service_apis.api_name IS 'API名称';
+-- COMMENT ON COLUMN service_apis.method IS 'HTTP方法';
+-- COMMENT ON COLUMN service_apis.api_desc IS 'API描述';
+-- COMMENT ON COLUMN service_apis.request_example IS '请求示例';
+-- COMMENT ON COLUMN service_apis.response_example IS '响应示例';
+-- COMMENT ON COLUMN service_apis.status IS 'API状态：published-已发布, draft-草稿, deprecated-已废弃';
+-- COMMENT ON COLUMN service_apis.deprecated_at IS '废弃时间';
+--
+-- -- 创建函数和触发器来更新计数
+-- CREATE OR REPLACE FUNCTION update_service_modules_count()
+-- RETURNS TRIGGER AS $$
+-- BEGIN
+--     IF TG_OP = 'INSERT' THEN
+--         UPDATE services
+--         SET modules_count = modules_count + 1,
+--             updated_at = CURRENT_TIMESTAMP
+--         WHERE id = NEW.service_id;
+--     ELSIF TG_OP = 'DELETE' THEN
+--         UPDATE services
+--         SET modules_count = modules_count - 1,
+--             updated_at = CURRENT_TIMESTAMP
+--         WHERE id = OLD.service_id;
+--     END IF;
+--     RETURN NULL;
+-- END;
+-- $$ LANGUAGE plpgsql;
+--
+-- CREATE TRIGGER service_modules_count_trigger
+-- AFTER INSERT OR DELETE ON service_modules
+-- FOR EACH ROW EXECUTE FUNCTION update_service_modules_count();
+--
+-- CREATE OR REPLACE FUNCTION update_module_apis_count()
+-- RETURNS TRIGGER AS $$
+-- BEGIN
+--     IF TG_OP = 'INSERT' THEN
+--         UPDATE service_modules
+--         SET apis_count = apis_count + 1,
+--             updated_at = CURRENT_TIMESTAMP
+--         WHERE id = NEW.module_id;
+--
+--         UPDATE services s
+--         SET apis_count = apis_count + 1,
+--             updated_at = CURRENT_TIMESTAMP
+--         FROM service_modules m
+--         WHERE s.id = m.service_id AND m.id = NEW.module_id;
+--     ELSIF TG_OP = 'DELETE' THEN
+--         UPDATE service_modules
+--         SET apis_count = apis_count - 1,
+--             updated_at = CURRENT_TIMESTAMP
+--         WHERE id = OLD.module_id;
+--
+--         UPDATE services s
+--         SET apis_count = apis_count - 1,
+--             updated_at = CURRENT_TIMESTAMP
+--         FROM service_modules m
+--         WHERE s.id = m.service_id AND m.id = OLD.module_id;
+--     END IF;
+--     RETURN NULL;
+-- END;
+-- $$ LANGUAGE plpgsql;
+--
+-- CREATE TRIGGER module_apis_count_trigger
+-- AFTER INSERT OR DELETE ON service_apis
+-- FOR EACH ROW EXECUTE FUNCTION update_module_apis_count();

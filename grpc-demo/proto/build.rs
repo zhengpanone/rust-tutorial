@@ -3,6 +3,10 @@
 use std::path::PathBuf;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let protoc = protoc_bin_vendored::protoc_bin_path()?;
+    unsafe {
+        std::env::set_var("PROTOC", protoc);
+    }
     // let proto_dir = PathBuf::from("./proto");
 
     // 定义要编译的所有 proto 文件
@@ -18,7 +22,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let includes = &["proto"];
 
     // 创建输出目录
-    let out_dir = PathBuf::from(std::env::var("OUT_DIR")?);
+    let mut out_dir = PathBuf::from(std::env::var("OUT_DIR")?);
 
     // 设置描述符文件路径
     let descriptor_path = out_dir.join("grpc_descriptor.bin");

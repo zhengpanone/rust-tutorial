@@ -1,13 +1,15 @@
 -- Add migration script here
-drop type if exists user_status_enum;
-do$$
-BEGIN
-IF
-NOT EXISTS (SELECT 1 FROM pg_type where typname = 'user_status_enum') THEN
-CREATE TYPE user_status_enum as ENUM ('active', 'inactive', 'suspended', 'locked', 'pending', 'deleted');
-END IF;
+DROP TYPE IF EXISTS user_status_enum;
+DO
+$$
+    BEGIN
+        IF
+            NOT EXISTS (SELECT 1 FROM pg_type where typname = 'user_status_enum') THEN
+            CREATE TYPE user_status_enum as ENUM ('active', 'inactive', 'suspended', 'locked', 'pending', 'deleted');
+        END IF;
 
-end$$;
+    end
+$$;
 
 
 -- Create sys_user table
@@ -16,7 +18,7 @@ DROP TABLE IF EXISTS sys_user;
 CREATE TABLE IF NOT EXISTS sys_user
 (
     -- 主键
-    id                   UUID PRIMARY KEY   DEFAULT gen_random_uuid(),
+    id                   UUID PRIMARY KEY          DEFAULT gen_random_uuid(),
 
     -- 基本信息
     username             VARCHAR(50)      NOT NULL,
@@ -42,7 +44,7 @@ CREATE TABLE IF NOT EXISTS sys_user
     last_activity_at     TIMESTAMPTZ,
 
     -- 账户安全
-    locked_until TIMESTAMPTZ,
+    locked_until         TIMESTAMPTZ,
     locked_at            TIMESTAMPTZ,
     lock_reason          VARCHAR(255),
     password_changed_at  TIMESTAMPTZ,
@@ -98,19 +100,20 @@ COMMENT ON COLUMN sys_user.updated_at IS '更新时间';
 COMMENT ON COLUMN sys_user.deleted_at IS '软删除时间';
 
 -- 创建索引
-CREATE INDEX idx_sys_user_email ON sys_user(email);
-CREATE INDEX idx_sys_user_username ON sys_user(username);
-CREATE INDEX idx_sys_user_status ON sys_user(status);
-CREATE INDEX idx_sys_user_deleted_at ON sys_user(deleted_at);
+CREATE INDEX idx_sys_user_email ON sys_user (email);
+CREATE INDEX idx_sys_user_username ON sys_user (username);
+CREATE INDEX idx_sys_user_status ON sys_user (status);
+CREATE INDEX idx_sys_user_deleted_at ON sys_user (deleted_at);
 
 
 
 -- 创建 updated_at 触发器（如果不存在）
 CREATE OR REPLACE FUNCTION trg_set_timestamp()
-RETURNS TRIGGER AS $$
+    RETURNS TRIGGER AS
+$$
 BEGIN
     NEW.updated_at := NOW();
-RETURN NEW;
+    RETURN NEW;
 END;
 $$ language 'plpgsql';
 
@@ -122,199 +125,99 @@ CREATE TRIGGER set_sys_user_updated_at
     BEFORE UPDATE
     ON sys_user
     FOR EACH ROW
-    EXECUTE FUNCTION trg_set_timestamp();
+EXECUTE FUNCTION trg_set_timestamp();
 
 
 DROP TABLE IF EXISTS sys_user_role;
 CREATE TABLE IF NOT EXISTS sys_user_role
 (
-    id
-    VARCHAR
-(
-    36
-) PRIMARY KEY DEFAULT gen_random_uuid
-(
-),
-    user_id VARCHAR
-(
-    36
-) NOT NULL ,
-    role_id VARCHAR
-(
-    36
-) NOT NULL ,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW
-(
-),
-    created_id VARCHAR
-(
-    255
-) not null DEFAULT '1',
-    created_by VARCHAR
-(
-    255
-) NOT NULL DEFAULT 'system',
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW
-(
-),
-    updated_id VARCHAR
-(
-    255
-) not null DEFAULT '1',
-    updated_by VARCHAR
-(
-    255
-) NOT NULL DEFAULT 'system',
-    is_deleted boolean not null default false,
+    id         VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id    VARCHAR(36)  NOT NULL,
+    role_id    VARCHAR(36)  NOT NULL,
+    created_at TIMESTAMPTZ  NOT NULL   DEFAULT NOW(),
+    created_id VARCHAR(255) not null   DEFAULT '1',
+    created_by VARCHAR(255) NOT NULL   DEFAULT 'system',
+    updated_at TIMESTAMPTZ  NOT NULL   DEFAULT NOW(),
+    updated_id VARCHAR(255) not null   DEFAULT '1',
+    updated_by VARCHAR(255) NOT NULL   DEFAULT 'system',
+    is_deleted boolean      not null   default false,
     deleted_at TIMESTAMP
-    );
+);
 
-comment
-on TABLE sys_user_role is '用户角色表';
-comment
-on COLUMN sys_user_role.user_id is '用户ID';
-comment
-on COLUMN sys_user_role.role_id is '角色ID';
+comment on TABLE sys_user_role is '用户角色表';
+comment on COLUMN sys_user_role.user_id is '用户ID';
+comment on COLUMN sys_user_role.role_id is '角色ID';
 
 
 do
 $$
-BEGIN
-IF
-NOT EXISTS (SELECT 1 FROM pg_type where typname = 'role_status_enum') THEN
-CREATE TYPE role_status_enum as ENUM ('active', 'inactive','banned');
-END IF;
+    BEGIN
+        IF
+            NOT EXISTS (SELECT 1 FROM pg_type where typname = 'role_status_enum') THEN
+            CREATE TYPE role_status_enum as ENUM ('active', 'inactive','banned');
+        END IF;
 
-end$$;
+    end
+$$;
 
 DROP TABLE IF EXISTS sys_role;
 CREATE TABLE IF NOT EXISTS sys_role
 (
-    id
-    VARCHAR
-(
-    36
-) PRIMARY KEY DEFAULT gen_random_uuid
-(
-),
-    name VARCHAR
-(
-    255
-) NOT NULL UNIQUE,
-    code VARCHAR
-(
-    255
-) NOT NULL UNIQUE,
-    status role_status_enum NOT NULL DEFAULT 'active',
-    order_num int not null default 1,
-    remark VARCHAR
-(
-    255
-),
-    description VARCHAR
-(
-    255
-),
-    is_default boolean not null default false,
-    is_protected boolean not null default false,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW
-(
-),
-    created_id VARCHAR
-(
-    255
-) not null DEFAULT '1',
-    created_by VARCHAR
-(
-    255
-) NOT NULL DEFAULT 'system',
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW
-(
-),
-    updated_id VARCHAR
-(
-    255
-) not null DEFAULT '1',
-    updated_by VARCHAR
-(
-    255
-) NOT NULL DEFAULT 'system',
-    is_deleted boolean not null default false,
-    deleted_at TIMESTAMP
-    );
+    id           VARCHAR(36) PRIMARY KEY   DEFAULT gen_random_uuid(),
+    name         VARCHAR(255)     NOT NULL UNIQUE,
+    code         VARCHAR(255)     NOT NULL UNIQUE,
+    status       role_status_enum NOT NULL DEFAULT 'active',
+    order_num    int              not null default 1,
+    remark       VARCHAR(255),
+    description  VARCHAR(255),
+    is_default   boolean          not null default false,
+    is_protected boolean          not null default false,
+    created_at   TIMESTAMPTZ      NOT NULL DEFAULT NOW(),
+    created_id   VARCHAR(255)     not null DEFAULT '1',
+    created_by   VARCHAR(255)     NOT NULL DEFAULT 'system',
+    updated_at   TIMESTAMPTZ      NOT NULL DEFAULT NOW(),
+    updated_id   VARCHAR(255)     not null DEFAULT '1',
+    updated_by   VARCHAR(255)     NOT NULL DEFAULT 'system',
+    is_deleted   boolean          not null default false,
+    deleted_at   TIMESTAMP
+);
 
-comment
-on TABLE sys_role is '角色表';
-comment
-on COLUMN sys_role.name is '角色名称';
-comment
-on COLUMN sys_role.description is '角色描述';
-comment
-on COLUMN sys_role.status is '角色状态';
-comment
-on COLUMN sys_role.is_default is '是否默认角色';
-comment
-on COLUMN sys_role.is_protected is '是否保护角色';
-comment
-on COLUMN sys_role.is_deleted is '是否删除';
-
-
+comment on TABLE sys_role is '角色表';
+comment on COLUMN sys_role.name is '角色名称';
+comment on COLUMN sys_role.description is '角色描述';
+comment on COLUMN sys_role.status is '角色状态';
+comment on COLUMN sys_role.is_default is '是否默认角色';
+comment on COLUMN sys_role.is_protected is '是否保护角色';
+comment on COLUMN sys_role.is_deleted is '是否删除';
 
 -- Create refresh_tokens table
 DROP TABLE IF EXISTS refresh_tokens;
 CREATE TABLE IF NOT EXISTS refresh_tokens
 (
-    jti
-    VARCHAR
-(
-    36
-) PRIMARY KEY,
-    user_id VARCHAR
-(
-    36
-) NOT NULL ,
+    jti        VARCHAR(36) PRIMARY KEY,
+    user_id    VARCHAR(36) NOT NULL,
     expires_at TIMESTAMPTZ NOT NULL,
-    revoked BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now
-(
-)
-    );
-CREATE INDEX IF NOT EXISTS idx_refresh_user ON refresh_tokens(user_id);
+    revoked    BOOLEAN     NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_refresh_user ON refresh_tokens (user_id);
 
 -- Create email_verifications table
 DROP TABLE IF EXISTS email_verifications;
 CREATE TABLE IF NOT EXISTS email_verifications
 (
-    user_id
-    VARCHAR
-(
-    36
-) PRIMARY KEY ,
-    token VARCHAR
-(
-    36
-) NOT NULL,
+    user_id    VARCHAR(36) PRIMARY KEY,
+    token      VARCHAR(36) NOT NULL,
     expires_at TIMESTAMPTZ NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now
-(
-)
-    );
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 
 -- Create password_resets table
 DROP TABLE IF EXISTS password_resets;
 CREATE TABLE IF NOT EXISTS password_resets
 (
-    user_id
-    VARCHAR
-(
-    36
-) PRIMARY KEY ,
-    token VARCHAR
-(
-    36
-) NOT NULL,
+    user_id    VARCHAR(36) PRIMARY KEY,
+    token      VARCHAR(36) NOT NULL,
     expires_at TIMESTAMPTZ NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now
-(
-)
-    );
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
