@@ -44,7 +44,7 @@ mod tests {
         let phone = "13800138000";
 
         let user = User {
-            id: user_id,
+            id: user_id.into(),
             username: username.to_string(),
             email: email.to_string(),
             phone: Some(phone.to_string()),
@@ -82,12 +82,12 @@ mod tests {
     async fn test_find_by_id() {
         let pool = setup_test_pool().await;
         let repository = UserRepositoryImpl::new(pool.clone(), None);
-        let user_id = Uuid::parse_str("ae63c5c2-d672-4e18-b78f-d353f870d44c").unwrap_or_else(|e| {
+        let user_id = Uuid::parse_str("1d35058a-b670-4bce-8d4a-eab2605085d0").unwrap_or_else(|e| {
             error!("Failed to parse user_id from claims.sub: {}", e);
             Uuid::new_v4()
         });
         let found_user = repository.find_by_id(&user_id).await.unwrap();
         assert!(found_user.is_some());
-        assert_eq!(found_user.unwrap().id, user_id);
+        assert_eq!(found_user.unwrap().id, user_id.into());
     }
 }
