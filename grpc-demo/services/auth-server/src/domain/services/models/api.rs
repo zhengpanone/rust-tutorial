@@ -1,4 +1,4 @@
-// src/domain/services/models/api.rs
+// src/domain/services/entity/api.rs
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 use validator::Validate;

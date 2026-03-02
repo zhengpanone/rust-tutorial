@@ -11,7 +11,7 @@ pub mod infrastructure; // 基础设施层
 // mod grpc;
 // mod handlers;
 // mod init;
-// mod models;
+// mod entity;
 // mod repository;
 // mod router;
 // mod services;

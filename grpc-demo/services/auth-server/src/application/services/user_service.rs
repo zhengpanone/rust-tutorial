@@ -1,6 +1,6 @@
 // src/application/services/user_service
 
-use crate::domain::identity::models::user::User;
+use crate::domain::identity::entity::user::User;
 use crate::infrastructure::web::dto::user::request::{
     CreateUserRequest, UpdateUserRequest, UserFilter,
 };

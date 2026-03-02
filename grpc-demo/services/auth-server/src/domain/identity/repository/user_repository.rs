@@ -1,6 +1,6 @@
 // src/domain/identity/repository/user_repository.rs
 
-use crate::domain::identity::models::user::User;
+use crate::domain::identity::entity::user::User;
 use crate::domain::identity::{Email, Username};
 use async_trait::async_trait;
 use common::error::AppResult;

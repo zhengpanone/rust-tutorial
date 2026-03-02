@@ -22,7 +22,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let includes = &["proto"];
 
     // 创建输出目录
-    let mut out_dir = PathBuf::from(std::env::var("OUT_DIR")?);
+    let out_dir = PathBuf::from(std::env::var("OUT_DIR")?);
 
     // 设置描述符文件路径
     let descriptor_path = out_dir.join("grpc_descriptor.bin");

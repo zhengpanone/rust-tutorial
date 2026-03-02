@@ -469,8 +469,8 @@ impl Default for AppConfig {
 impl Default for RedisConfig {
     fn default() -> Self {
         Self {
-            // url: "redis://:redis123456@127.0.0.1:30379".to_string(),
-            url: "redis://:@127.0.0.1:6379".to_string(),
+            url: "redis://:redis123456@127.0.0.1:30379".to_string(),
+            // url: "redis://:@127.0.0.1:6379".to_string(),
             pool_size: 10,
             default_ttl_secs: 10,
             enable_cluster: false,

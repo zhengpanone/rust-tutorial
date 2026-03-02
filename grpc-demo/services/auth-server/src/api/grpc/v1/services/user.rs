@@ -1,4 +1,4 @@
-// api/grpc/v1/user.rs
+// api/grpc/v1/user_row
 
 use prost_types::Timestamp;
 use std::sync::Arc;

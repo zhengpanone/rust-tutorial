@@ -1,4 +1,5 @@
-use crate::domain::identity::models::user::User;
+use crate::domain::identity::entity::user::User;
+use crate::domain::shared::id::DomainId;
 use chrono::{DateTime, Utc};
 use common::enums::user::UserStatus;
 use serde::{Deserialize, Serialize};
@@ -73,14 +74,14 @@ pub struct UserResponse {
 impl From<User> for UserResponse {
     fn from(user: User) -> Self {
         Self {
-            id: user.id,
+            id: Uuid::try_from(user.id).unwrap(),
             username: user.username,
             email: user.email,
             display_name: user.display_name,
             avatar_url: user.avatar_url,
             phone: user.phone,
-            roles: user.roles.0,             // 这里 .0 拿到 Vec<String>
-            permissions: user.permissions.0, // 这里 .0 拿到 Vec<String>
+            roles: user.roles.iter().map(|r| r.to_string()).collect(), // 这里  拿到 Vec<String>
+            permissions: user.permissions.iter().map(|p| p.to_string()).collect(), // 这里  拿到 Vec<String>
             email_verified: user.email_verified,
             phone_verified: user.phone_verified,
             status: user.status,

@@ -1,6 +1,6 @@
 // src/api/grpc/v1/converters/user_converter.rs
 
-use crate::domain::identity::models::user::User as DomainUser;
+use crate::domain::identity::entity::user::User as DomainUser;
 use crate::infrastructure::web::dto::user::request::{
     CreateUserRequest as DomainCreateUserRequest, UpdateUserRequest as DomainUpdateUserRequest,
 };

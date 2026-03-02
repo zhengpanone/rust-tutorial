@@ -1,4 +1,5 @@
-use crate::domain::identity::models::user::User;
+use crate::domain::identity::entity::role::RoleId;
+use crate::domain::identity::entity::user::User;
 use chrono::{DateTime, Utc};
 use common::enums::user::UserStatus;
 use serde::{Deserialize, Serialize};
@@ -69,15 +70,15 @@ impl CreateUserRequest {
     pub fn into_user(self, password_hash: &str) -> User {
         let now = Utc::now();
         User {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             username: self.username,
             email: self.email,
             phone: self.phone,
             password_hash: password_hash.to_string(),
             display_name: self.display_name,
             avatar_url: self.avatar_url,
-            roles: sqlx::types::Json(self.roles),
-            permissions: sqlx::types::Json(vec![]),
+            roles: self.roles.iter().map(|r| RoleId::from(r.clone())).collect(),
+            permissions: vec![],
             email_verified: false,
             phone_verified: false,
             status: self.status,

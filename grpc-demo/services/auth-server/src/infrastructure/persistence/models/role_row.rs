@@ -1,12 +1,14 @@
+// src/domain/identity/entity/role.rs
+// 角色领域实体
+use crate::domain::identity::entity::role::RoleId;
 use chrono::{DateTime, Utc};
 use common::enums::role::{RoleStatus, RoleType};
-use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, FromRow)]
 pub struct SysRole {
     // 角色ID
-    pub id: String,
+    pub id: RoleId,
     // 角色名称
     pub role_name: String,
 

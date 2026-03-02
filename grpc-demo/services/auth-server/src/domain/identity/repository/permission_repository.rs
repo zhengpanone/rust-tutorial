@@ -1,4 +1,4 @@
-use crate::domain::identity::models::permission::{Permission, PermissionId};
+use crate::domain::identity::entity::permission::{Permission, PermissionId};
 use async_trait::async_trait;
 use common::enums::permission::PermissionType;
 use common::error::AppResult;

@@ -1,30 +1,58 @@
-// src/domain/identity/models/user.rs
-
+// src/domain/identity/entity/user.rs
+// 用户领域实体
+use crate::domain::identity::entity::permission::PermissionId;
+use crate::domain::identity::entity::role::RoleId;
+use crate::domain::shared::id::DomainId;
 use chrono::{DateTime, Utc};
 use common::enums::user::UserStatus;
+use common::error::AppError;
 use serde::{Deserialize, Serialize};
-use sqlx::FromRow;
-use sqlx::types::Json;
 use uuid::Uuid;
 use validator::Validate;
-use common::error::{AppError, AppResult};
-use crate::domain::services::models::service::ServiceId;
 
+/// Newtype 模式
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UserId(String);
 
-impl UserId {
-    pub fn new() -> Self {
-        Self(Uuid::new_v4().to_string())
-    }
-    pub fn parse(id: &str) -> AppResult<Self> {
-        Uuid::parse_str(id)
-            .map_err(|_| AppError::InvalidId(id.to_string()))
-            .map(|_| Self(id.to_string()))
+impl DomainId for UserId {
+    fn from_string(value: String) -> Self {
+        Self(value)
     }
 
-    pub fn as_str(&self) -> &str {
+    fn as_str(&self) -> &str {
         &self.0
+    }
+}
+
+impl From<String> for UserId {
+    fn from(id: String) -> Self {
+        Self(id)
+    }
+}
+
+impl From<&str> for UserId {
+    fn from(value: &str) -> Self {
+        Self(value.to_string())
+    }
+}
+
+impl From<Uuid> for UserId {
+    fn from(uuid: Uuid) -> Self {
+        Self(uuid.to_string())
+    }
+}
+
+impl TryFrom<UserId> for Uuid {
+    type Error = AppError;
+
+    fn try_from(value: UserId) -> Result<Self, Self::Error> {
+        Uuid::parse_str(&value.0).map_err(|_| AppError::InvalidId(value.0))
+    }
+}
+
+impl std::fmt::Display for UserId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 
@@ -33,11 +61,10 @@ impl UserId {
 /// Debug：用于调试打印
 /// Clone：允许创建副本
 /// Serialize/Deserialize：JSON 序列化支持
-/// FromRow：自动将数据库行转换为 Rust 结构
-#[derive(Debug, Clone, Serialize, Deserialize, Validate, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, Validate)]
 pub struct User {
     // 用户ID
-    pub id: Uuid,
+    pub id: UserId,
 
     /// 用户名
     #[validate(length(min = 3, max = 50, message = "用户名长度必须在3-50个字符之间"))]
@@ -73,11 +100,11 @@ pub struct User {
 
     /// 角色列表
     #[serde(default)]
-    pub roles: Json<Vec<String>>,
+    pub roles: Vec<RoleId>,
 
     /// 权限列表
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub permissions: Json<Vec<String>>,
+    pub permissions: Vec<PermissionId>,
 
     /// 是否已验证邮箱
     #[serde(default)]
@@ -159,6 +186,47 @@ pub struct User {
 }
 
 impl User {
+    /// 创建新用户
+    pub fn new(
+        username: String,
+        email: String,
+        password_hash: String,
+        display_name: String,
+    ) -> Self {
+        let now = Utc::now();
+        Self {
+            id: UserId::new(),
+            username,
+            email,
+            phone: None,
+            password_hash,
+            display_name,
+            avatar_url: None,
+            roles: Vec::new(),
+            permissions: Vec::new(),
+            email_verified: false,
+            phone_verified: false,
+            status: UserStatus::Activate,
+            last_login_at: None,
+            login_count: 0,
+            failed_login_count: 0,
+            last_failed_login_at: None,
+            locked_at: None,
+            locked_until: None,
+            lock_reason: None,
+            password_changed_at: Some(now),
+            password_expires_at: None,
+            is_first_login: true,
+            last_activity_at: None,
+            timezone: None,
+            language: None,
+            metadata: None,
+            created_at: now,
+            updated_at: now,
+            deleted_at: None,
+        }
+    }
+
     pub fn activate(&mut self) {
         self.status = UserStatus::Activate;
         self.updated_at = Utc::now();
@@ -216,5 +284,57 @@ impl User {
             }
         }
         false
+    }
+
+    /// 检查用户是否活跃
+    pub fn is_active(&self) -> bool {
+        self.status == UserStatus::Activate && !self.is_locked()
+    }
+
+    /// 添加角色
+    pub fn add_role(&mut self, role_id: RoleId) {
+        if !self.roles.contains(&role_id) {
+            self.roles.push(role_id);
+            self.updated_at = Utc::now();
+        }
+    }
+
+    /// 移除角色
+    pub fn remove_role(&mut self, role_id: &RoleId) {
+        self.roles.retain(|r| r != role_id);
+        self.updated_at = Utc::now();
+    }
+
+    /// 添加权限
+    pub fn add_permission(&mut self, permission_id: PermissionId) {
+        if !self.permissions.contains(&permission_id) {
+            self.permissions.push(permission_id);
+            self.updated_at = Utc::now();
+        }
+    }
+
+    /// 移除权限
+    pub fn remove_permission(&mut self, permission_id: &PermissionId) {
+        self.permissions.retain(|p| p != permission_id);
+        self.updated_at = Utc::now();
+    }
+
+    /// 更新密码
+    pub fn update_password(&mut self, new_password_hash: String) {
+        self.password_hash = new_password_hash;
+        self.password_changed_at = Some(Utc::now());
+        self.updated_at = Utc::now();
+    }
+
+    /// 验证邮箱
+    pub fn verify_email(&mut self) {
+        self.email_verified = true;
+        self.updated_at = Utc::now();
+    }
+
+    /// 验证手机
+    pub fn verify_phone(&mut self) {
+        self.phone_verified = true;
+        self.updated_at = Utc::now();
     }
 }

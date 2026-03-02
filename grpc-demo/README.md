@@ -10,6 +10,7 @@ cargo new --bin cli-client
 
 
 ## 根目录 Cargo.toml
+
 ```shell
 cat > Cargo.toml << 'EOF'
 [workspace]

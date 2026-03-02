@@ -1,4 +1,4 @@
-use crate::domain::identity::models::auth_session::AuthSession;
+use crate::domain::identity::entity::auth_session::AuthSession;
 use async_trait::async_trait;
 use common::error::AppResult;
 

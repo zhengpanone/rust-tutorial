@@ -1,11 +1,12 @@
-use crate::domain::identity::models::user::User;
+use crate::domain::identity::entity::user::User;
 use crate::domain::identity::repository::user_repository::UserRepository;
 use async_trait::async_trait;
 use common::error::{AppError, AppResult};
-use sqlx::types::Json;
 use std::sync::Arc;
 
 use crate::domain::identity::{Email, Username};
+
+use crate::infrastructure::persistence::models::user_row::UserRow;
 use sqlx::PgPool;
 use tracing::{debug, error};
 use uuid::Uuid;
@@ -29,8 +30,8 @@ impl UserRepository for UserRepositoryImpl {
     async fn find_by_id(&self, user_id: &Uuid) -> AppResult<Option<User>> {
         debug!("查找用户: id={}", user_id);
 
-        let user = sqlx::query_as!(
-            User,
+        let row = sqlx::query_as!(
+            UserRow,
             r#"SELECT
                 id,
                 username,
@@ -39,8 +40,8 @@ impl UserRepository for UserRepositoryImpl {
                 password_hash,
                 display_name,
                 avatar_url,
-                roles AS "roles: Json<Vec<String>>",
-                permissions AS "permissions: Json<Vec<String>>",
+                roles AS "roles: sqlx::types::Json<Vec<String>>",
+                permissions AS "permissions: sqlx::types::Json<Vec<String>>",
                 email_verified,
                 phone_verified,
                 status        AS "status: common::enums::user::UserStatus",
@@ -74,12 +75,20 @@ impl UserRepository for UserRepositoryImpl {
             AppError::Database(e.to_string())
         })?;
 
-        Ok(user)
+        // 转换 UserRow -> User 并处理可能的解析错误
+        match row {
+            Some(r) => {
+                let user = r.to_domain(); // to_domain 返回 AppResult<User>
+                Ok(Some(user))
+            }
+            None => Ok(None),
+        }
     }
     /// 通过用户名查找用户
     async fn find_by_username(&self, username: &Username) -> AppResult<Option<User>> {
         debug!("查找用户: username={}", username);
 
+        // 先查出用户 ID
         let row = sqlx::query!(
             r#"
             SELECT id FROM sys_user WHERE username = $1 AND deleted_at IS NULL
@@ -89,7 +98,7 @@ impl UserRepository for UserRepositoryImpl {
         .fetch_optional(&self.pool)
         .await
         .map_err(|e| {
-            error!("查找用户失败: {} - {}", username, e);
+            error!("通过用户名查找用户失败: {} - {}", username, e);
             AppError::Database(e.to_string())
         })?;
         match row {
@@ -244,7 +253,7 @@ impl UserRepository for UserRepositoryImpl {
                 $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::user_status_enum, -- 加类型转换
                 $13, $14, $15, $16, $17, $18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28)
                 "#,
-            user.id,
+            Uuid::try_from(user.id.clone())?,
             user.username,
             user.email,
             user.phone,

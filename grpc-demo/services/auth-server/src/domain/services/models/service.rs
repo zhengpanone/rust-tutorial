@@ -1,4 +1,4 @@
-// src/domain/services/models/service.rs
+// src/domain/services/entity/service.rs
 use super::super::{
     events::service_events::ServiceCreated,
     value_objects::{ServiceStatus, ServiceType, Url},

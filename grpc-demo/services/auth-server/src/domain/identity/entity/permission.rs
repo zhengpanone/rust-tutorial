@@ -1,26 +1,15 @@
+// src/domain/identity/entity/permission.rs
+// 权限领域实体
+use crate::domain::shared::id::Id;
 use chrono::{DateTime, Utc};
 use common::enums::permission::PermissionType;
-use common::error::{AppError, AppResult};
-use uuid::Uuid;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PermissionId(String);
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PermissionTag;
 
-impl PermissionId {
-    pub fn new() -> Self {
-        Self(Uuid::new_v4().to_string())
-    }
-
-    pub fn parse(id: &str) -> AppResult<Self> {
-        Uuid::parse_str(id)
-            .map_err(|_| AppError::InvalidId(id.to_string()))
-            .map(|_| Self(id.to_string()))
-    }
-
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-}
+/// 类型别名
+pub type PermissionId = Id<PermissionTag>;
 
 #[derive(Debug, Clone)]
 pub struct Permission {

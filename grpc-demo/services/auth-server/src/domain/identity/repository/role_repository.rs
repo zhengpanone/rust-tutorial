@@ -1,5 +1,5 @@
-use crate::domain::identity::models::permission::{Permission, PermissionId};
-use crate::domain::identity::models::role::SysRole;
+use crate::domain::identity::entity::permission::{Permission, PermissionId};
+use crate::domain::identity::entity::role::SysRole;
 use async_trait::async_trait;
 use common::enums::role::RoleType;
 use common::error::AppResult;

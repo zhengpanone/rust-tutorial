@@ -1,5 +1,5 @@
 use crate::application::services::user_service::UserService;
-use crate::domain::identity::models::user::User;
+use crate::domain::identity::entity::user::User;
 use crate::domain::identity::repository::user_repository::UserRepository;
 use common::security::password::hash_password;
 use crate::infrastructure::web::dto::auth::request::validate_password_strength;

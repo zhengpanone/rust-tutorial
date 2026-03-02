@@ -1,5 +1,5 @@
 use crate::application::services::auth_service::AuthService;
-use crate::domain::identity::models::user::User;
+use crate::domain::identity::entity::user::User;
 use crate::domain::identity::repository::user_repository::UserRepository;
 use crate::infrastructure::web::dto::auth::request::{LoginRequest, RegisterRequest};
 use crate::infrastructure::web::dto::auth::response::SessionInfoResponse;
