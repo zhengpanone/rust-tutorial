@@ -7,6 +7,7 @@ use deadpool_redis::redis::AsyncCommands;
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, encode};
 use parking_lot::RwLock;
 use serde_json::json;
+use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
@@ -238,7 +239,7 @@ impl JwtService {
         &self,
         user: JwtUser,
         session: JwtSession,
-    ) -> Result<String, AppError> {
+    ) -> Result<(String, JwtClaim), AppError> {
         let claim = JwtClaim::new_access_token(
             user.id.clone(),
             user,
@@ -257,7 +258,7 @@ impl JwtService {
         let token = encode(&header, &claim, &self.encoding_key.read())
             .map_err(|e| AppError::Authentication(format!("生成访问令牌失败 {}", e)))?;
         info!("生成访问令牌成功: {}", claim.jti);
-        Ok(token)
+        Ok((token, claim))
     }
 
     /// 生成刷新令牌
@@ -410,8 +411,8 @@ impl JwtService {
             username: "admin".to_string(),
             email: "<EMAIL>".to_string(),
             display_name: "".to_string(),
-            roles: vec!["admin".to_string()],
-            permissions: vec![],
+            roles: HashSet::from(["admin".to_string()]),
+            permissions: HashSet::new(),
             status: UserStatus::Activate,
             email_verified: false,
             phone_verified: false,

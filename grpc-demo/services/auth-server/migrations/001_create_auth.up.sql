@@ -5,7 +5,7 @@ $$
     BEGIN
         IF
             NOT EXISTS (SELECT 1 FROM pg_type where typname = 'user_status_enum') THEN
-            CREATE TYPE user_status_enum as ENUM ('active', 'inactive', 'suspended', 'locked', 'pending', 'deleted');
+            CREATE TYPE user_status_enum as ENUM ('activate', 'deactivate', 'suspended', 'locked', 'pending', 'deleted');
         END IF;
 
     end
@@ -128,26 +128,6 @@ CREATE TRIGGER set_sys_user_updated_at
 EXECUTE FUNCTION trg_set_timestamp();
 
 
-DROP TABLE IF EXISTS sys_user_role;
-CREATE TABLE IF NOT EXISTS sys_user_role
-(
-    id         VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id    VARCHAR(36)  NOT NULL,
-    role_id    VARCHAR(36)  NOT NULL,
-    created_at TIMESTAMPTZ  NOT NULL   DEFAULT NOW(),
-    created_id VARCHAR(255) not null   DEFAULT '1',
-    created_by VARCHAR(255) NOT NULL   DEFAULT 'system',
-    updated_at TIMESTAMPTZ  NOT NULL   DEFAULT NOW(),
-    updated_id VARCHAR(255) not null   DEFAULT '1',
-    updated_by VARCHAR(255) NOT NULL   DEFAULT 'system',
-    is_deleted boolean      not null   default false,
-    deleted_at TIMESTAMP
-);
-
-comment on TABLE sys_user_role is '用户角色表';
-comment on COLUMN sys_user_role.user_id is '用户ID';
-comment on COLUMN sys_user_role.role_id is '角色ID';
-
 
 do
 $$
@@ -160,16 +140,18 @@ $$
     end
 $$;
 
+-- 角色表
 DROP TABLE IF EXISTS sys_role;
 CREATE TABLE IF NOT EXISTS sys_role
 (
     id           VARCHAR(36) PRIMARY KEY   DEFAULT gen_random_uuid(),
-    name         VARCHAR(255)     NOT NULL UNIQUE,
-    code         VARCHAR(255)     NOT NULL UNIQUE,
-    status       role_status_enum NOT NULL DEFAULT 'active',
+    role_code    VARCHAR(255)     NOT NULL UNIQUE,
+    role_name    VARCHAR(255)     NOT NULL,
+    role_status  role_status_enum NOT NULL DEFAULT 'active',
+    role_type    INT              NOT NULL DEFAULT 1,
     order_num    int              not null default 1,
     remark       VARCHAR(255),
-    description  VARCHAR(255),
+    role_desc    VARCHAR(255),
     is_default   boolean          not null default false,
     is_protected boolean          not null default false,
     created_at   TIMESTAMPTZ      NOT NULL DEFAULT NOW(),
@@ -183,12 +165,82 @@ CREATE TABLE IF NOT EXISTS sys_role
 );
 
 comment on TABLE sys_role is '角色表';
-comment on COLUMN sys_role.name is '角色名称';
-comment on COLUMN sys_role.description is '角色描述';
-comment on COLUMN sys_role.status is '角色状态';
+comment on COLUMN sys_role.id is '角色ID';
+comment on COLUMN sys_role.role_name is '角色名称';
+comment on COLUMN sys_role.role_code is '角色编码，如 ADMIN, USER, SUPPORT';
+comment on COLUMN sys_role.role_type is '角色类型：1-系统角色，2-业务角色，3-自定义角色';
+comment on COLUMN sys_role.role_desc is '角色描述';
+comment on COLUMN sys_role.role_status is '角色状态';
 comment on COLUMN sys_role.is_default is '是否默认角色';
 comment on COLUMN sys_role.is_protected is '是否保护角色';
 comment on COLUMN sys_role.is_deleted is '是否删除';
+
+-- 权限表
+DROP TABLE IF EXISTS sys_permission;
+CREATE TABLE IF NOT EXISTS sys_permission
+(
+    id              VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid(),
+    permission_code VARCHAR(255) NOT NULL UNIQUE,
+    permission_name VARCHAR(255) NOT NULL,
+    permission_type INT          NOT NULL   DEFAULT 1,
+    order_num       int          not null   default 1,
+    remark          VARCHAR(255),
+    permission_desc VARCHAR(255),
+    created_at      TIMESTAMPTZ  NOT NULL   DEFAULT NOW(),
+    created_id      VARCHAR(255) not null   DEFAULT '1',
+    created_by      VARCHAR(255) NOT NULL   DEFAULT 'system',
+    updated_at      TIMESTAMPTZ  NOT NULL   DEFAULT NOW(),
+    updated_id      VARCHAR(255) not null   DEFAULT '1',
+    updated_by      VARCHAR(255) NOT NULL   DEFAULT 'system',
+    is_deleted      boolean      not null   default false,
+    deleted_at      TIMESTAMP
+);
+
+comment on TABLE sys_permission is '权限表';
+comment on COLUMN sys_permission.id is '权限ID';
+comment on COLUMN sys_permission.permission_name is '权限名称';
+comment on COLUMN sys_permission.permission_code is '权限编码，如 ADMIN, USER, SUPPORT';
+comment on COLUMN sys_permission.permission_type is '权限类型：1-菜单权限，2-操作权限，3-数据权限， 4-API权限';
+comment on COLUMN sys_permission.permission_desc is '权限描述';
+comment on COLUMN sys_permission.remark is '权限备注';
+comment on COLUMN sys_permission.is_deleted is '是否删除';
+
+-- 用户-角色关联表
+DROP TABLE IF EXISTS sys_user_role;
+CREATE TABLE IF NOT EXISTS sys_user_role
+(
+    id             VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id        VARCHAR(36)  NOT NULL,
+    role_id        VARCHAR(36)  NOT NULL,
+    source         INT                     DEFAULT 1 NOT NULL,
+    effective_from TIMESTAMPTZ  NULL,
+    effective_to   TIMESTAMPTZ  NULL,
+    created_at     TIMESTAMPTZ  NOT NULL   DEFAULT NOW(),
+    created_id     VARCHAR(255) not null   DEFAULT '1',
+    created_by     VARCHAR(255) NOT NULL   DEFAULT 'system',
+    updated_at     TIMESTAMPTZ  NOT NULL   DEFAULT NOW(),
+    updated_id     VARCHAR(255) not null   DEFAULT '1',
+    updated_by     VARCHAR(255) NOT NULL   DEFAULT 'system',
+    is_deleted     boolean      not null   default false,
+    deleted_at     TIMESTAMPTZ,
+    UNIQUE (user_id, role_id)
+);
+
+comment on TABLE sys_user_role is '用户角色表';
+comment on COLUMN sys_user_role.id is '用户角色ID';
+comment on COLUMN sys_user_role.user_id is '用户ID';
+comment on COLUMN sys_user_role.role_id is '角色ID';
+comment on COLUMN sys_user_role.source is '来源：1-手动分配，2-自动分配，3-继承';
+comment on COLUMN sys_user_role.effective_from is '生效时间';
+comment on COLUMN sys_user_role.effective_to is '失效时间';
+comment on COLUMN sys_user_role.created_at is '创建时间';
+comment on COLUMN sys_user_role.created_id is '创建人ID';
+comment on COLUMN sys_user_role.created_by is '创建人';
+
+-- 创建索引
+CREATE INDEX idx_user_id ON sys_user_role (user_id);
+CREATE INDEX idx_role_id ON sys_user_role (role_id);
+
 
 -- Create refresh_tokens table
 DROP TABLE IF EXISTS refresh_tokens;

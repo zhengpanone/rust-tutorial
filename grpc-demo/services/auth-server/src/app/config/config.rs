@@ -446,7 +446,7 @@ impl Default for AppConfig {
             version: env!("CARGO_PKG_VERSION").to_string(),
             enable_openapi: true,
             enable_metrics: false,
-            enable_http: false,
+            enable_http: true,
             enabled_grpc: true,
             environment: "development".to_string(),
             config_path: PathBuf::from("config/default.toml"),

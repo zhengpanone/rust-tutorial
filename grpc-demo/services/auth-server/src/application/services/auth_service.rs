@@ -5,7 +5,7 @@ use crate::infrastructure::web::dto::auth::request::{LoginRequest, RegisterReque
 use crate::infrastructure::web::dto::auth::response::SessionInfoResponse;
 use async_trait::async_trait;
 use common::error::AppError;
-use common::security::jwt::claim::JwtSession;
+use common::security::jwt::claim::{JwtClaim, JwtSession};
 
 /// 认证应用服务 trait
 #[async_trait]
@@ -76,6 +76,12 @@ pub trait AuthService: Send + Sync {
         user: &User,
         request: &LoginRequest,
     ) -> Result<JwtSession, AppError>;
+
+    async fn refresh_token(
+        &self,
+        refresh_token: &str,
+        new_session: JwtSession,
+    ) -> Result<(String, JwtClaim), AppError>;
 
     /// 验证验证码
     async fn verify_captcha(&self, captcha_id: &str, captcha: &str) -> Result<bool, AppError>;

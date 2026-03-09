@@ -15,6 +15,7 @@ pub struct CreateUserRequest {
         length(min = 3, max = 50, message = "用户名长度必须在3-50个字符之间"),
         custom(function = "validate_username")
     )]
+    #[schema(default = "default_user")]
     pub username: String,
 
     /// 邮箱
@@ -22,6 +23,7 @@ pub struct CreateUserRequest {
         length(max = 128, message = "邮箱长度不能超过128个字符"),
         email(message = "邮箱格式不正确")
     )]
+    #[schema(default = "user@example.com")]
     pub email: String,
 
     /// 手机号
@@ -30,6 +32,7 @@ pub struct CreateUserRequest {
         custom(function = "validate_phone")
     )]
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[schema(default, nullable)]
     pub phone: Option<String>,
 
     /// 密码
@@ -38,10 +41,12 @@ pub struct CreateUserRequest {
         custom(function = "validate_password_strength")
     )]
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[schema(default, nullable)]
     pub password: Option<String>,
 
     /// 显示名称
     #[validate(length(max = 100, message = "显示名称长度不能超过100个字符"))]
+    #[schema(default="user")]
     pub display_name: String,
 
     /// 头像URL
@@ -50,19 +55,23 @@ pub struct CreateUserRequest {
         url(message = "头像URL格式不正确")
     )]
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[schema(default, nullable)]
     pub avatar_url: Option<String>,
 
     /// 角色列表
     #[validate(length(max = 20, message = "角色长度不能超过20个"))]
     #[serde(default)]
+    #[schema(default, nullable)]
     pub roles: Vec<String>,
 
     /// 账户状态
     #[serde(default)]
+    #[schema(default)]
     pub status: UserStatus,
 
     /// 元数据
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[schema(default, nullable)]
     pub metadata: Option<serde_json::Value>,
 }
 

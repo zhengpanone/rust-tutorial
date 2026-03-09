@@ -179,39 +179,6 @@ https://yuanbao.tencent.com/chat/naQivTmsDa?chatMode=temp
 
 -- Add migration script here
 
-CREATE TYPE user_role AS ENUM ('admin', 'editor', 'author', 'subscriber');
-CREATE TABLE users
-(
-    id             UUID PRIMARY KEY             DEFAULT gen_random_uuid(),
-    username       VARCHAR(50) UNIQUE  NOT NULL,
-    email          VARCHAR(100) UNIQUE NOT NULL,
-    display_name   VARCHAR(100)        NOT NULL,
-    bio            TEXT,
-    avatar_url     TEXT,
-    website        TEXT,
-    password_hash  VARCHAR(255)        NOT NULL,
-    role           user_role           NOT NULL DEFAULT 'subscriber',
-    is_active      BOOLEAN                      DEFAULT TRUE,
-    email_verified BOOLEAN                      DEFAULT FALSE,
-    created_at     TIMESTAMPTZ                  DEFAULT NOW(),
-    updated_at     TIMESTAMPTZ                  DEFAULT NOW(),
-    last_login     TIMESTAMPTZ
-);
-
--- 角色表
-CREATE TABLE `roles` (
-  `role_id` INT PRIMARY KEY AUTO_INCREMENT COMMENT '角色ID',
-  `role_code` VARCHAR(50) UNIQUE NOT NULL COMMENT '角色编码，如 ADMIN, USER, SUPPORT',
-  `role_name` VARCHAR(100) NOT NULL COMMENT '角色名称',
-  `role_type` TINYINT NOT NULL DEFAULT 1 COMMENT '角色类型：1-系统角色，2-业务角色，3-自定义角色',
-  `role_desc` VARCHAR(500) COMMENT '角色描述',
-  `status` TINYINT NOT NULL DEFAULT 1 COMMENT '状态：1-启用，0-停用',
-  `is_system` BOOLEAN DEFAULT FALSE COMMENT '是否系统内置角色',
-  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX `idx_status` (`status`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='角色表';
-
 -- 角色服务权限表
 CREATE TABLE `auth_service`.`role_service_permissions` (
   `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -324,36 +291,6 @@ CREATE TABLE `auth_service`.`service_to_service_permissions` (
   FOREIGN KEY (`target_api_id`) REFERENCES `service_apis`(`api_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='服务间调用权限表';
 
--- 用户-角色关联表
-CREATE TABLE `user_roles` (
-  `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
-  `user_id` BIGINT NOT NULL COMMENT '用户ID（关联user_service.users）',
-  `role_id` INT NOT NULL COMMENT '角色ID',
-  `source` TINYINT DEFAULT 1 COMMENT '来源：1-手动分配，2-自动分配，3-继承',
-  `effective_from` TIMESTAMP NULL COMMENT '生效时间',
-  `effective_to` TIMESTAMP NULL COMMENT '失效时间',
-  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  `created_by` BIGINT COMMENT '创建人',
-  UNIQUE KEY `uk_user_role` (`user_id`, `role_id`),
-  INDEX `idx_user` (`user_id`),
-  INDEX `idx_role` (`role_id`),
-  FOREIGN KEY (`role_id`) REFERENCES `roles`(`role_id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户角色关联表';
-
-
-
--- 服务模块表
-CREATE TABLE `auth_service`.`service_modules` (
-  `module_id` INT PRIMARY KEY AUTO_INCREMENT,
-  `service_id` INT NOT NULL COMMENT '所属服务',
-  `module_code` VARCHAR(50) NOT NULL COMMENT '模块编码',
-  `module_name` VARCHAR(100) NOT NULL COMMENT '模块名称',
-  `module_path` VARCHAR(200) COMMENT '模块基础路径',
-  `sort_order` INT DEFAULT 0 COMMENT '排序',
-  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY `uk_service_module` (`service_id`, `module_code`),
-  FOREIGN KEY (`service_id`) REFERENCES `micro_services`(`service_id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='服务模块表';
 
 -- 服务接口表
 CREATE TABLE `auth_service`.`service_apis` (

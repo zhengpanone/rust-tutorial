@@ -3,6 +3,10 @@ use proto::hello::{HelloReply, HelloRequest};
 use tonic::{Request, Response, Status, Streaming};
 use tracing::info;
 
+pub fn grpc_hello_service() -> GrpcHelloService {
+    GrpcHelloService::default()
+}
+
 // gRPC adapter
 #[derive(Default)]
 pub struct GrpcHelloService;

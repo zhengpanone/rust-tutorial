@@ -6,6 +6,7 @@ use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 
 use crate::app::bootstrap::InfrastructureServices;
+use crate::app::bootstrap::server::jwt::{JwtService, init_jwt_service};
 use crate::application::services::auth_service::AuthService;
 use crate::application::services::impls::auth_service_impl::AuthServiceImpl;
 use crate::application::services::impls::user_service_impl::UserServiceImpl;
@@ -13,10 +14,7 @@ use crate::application::services::user_service::UserService;
 use common::error::AppResult;
 use std::{
     collections::HashMap,
-    sync::{
-        Arc,
-        atomic::{ AtomicU64},
-    },
+    sync::{Arc, atomic::AtomicU64},
 };
 use tracing::info;
 use uuid::Uuid;
@@ -31,6 +29,7 @@ pub struct AppState {
 
     pub user_service: Arc<dyn UserService>,
     pub auth_service: Arc<dyn AuthService>,
+    pub jwt_service: Arc<JwtService>,
     pub startup_time: DateTime<Utc>,
 }
 
@@ -51,11 +50,13 @@ impl AppState {
         let infrastructure_services = InfrastructureServices::new(config).await?;
         let user_repository = infrastructure_services.get_user_repository();
         // 2. 创建领域服务工厂
+        let jwt_service = init_jwt_service(&config.security, &infrastructure_services).await?;
 
         // 3. 初始化应用服务
         let user_service = Arc::new(UserServiceImpl::new(user_repository.clone()));
         let auth_service = Arc::new(AuthServiceImpl::new(
             user_repository.clone(),
+            jwt_service.clone(),
             infrastructure_services.redis_pool.clone(),
         ));
         Ok(Self {
@@ -63,6 +64,7 @@ impl AppState {
             infrastructure_services: Arc::new(infrastructure_services),
             user_service,
             auth_service,
+            jwt_service,
             startup_time: Utc::now(),
         })
     }

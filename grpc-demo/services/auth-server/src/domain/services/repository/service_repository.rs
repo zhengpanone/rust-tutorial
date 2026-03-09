@@ -1,33 +1,28 @@
-// src/domain/services/repository/service_repository_back
-use async_trait::async_trait;
-
+// src/domain/services/repository/service_repository
 use super::super::{
     models::service::{Service, ServiceId},
     value_objects::{ServiceStatus, ServiceType},
 };
+use async_trait::async_trait;
+use common::error::AppResult;
 
 #[async_trait]
 pub trait ServiceRepository: Send + Sync {
-    async fn save(&self, service: Service) -> Result<Service, crate::shared::error::Error>;
-    async fn find_by_id(
-        &self,
-        id: &ServiceId,
-    ) -> Result<Option<Service>, crate::shared::error::Error>;
-    async fn find_by_code(
-        &self,
-        code: &str,
-    ) -> Result<Option<Service>, crate::shared::error::Error>;
+    async fn save(&self, service: Service) -> AppResult<Service>;
+
+    async fn find_by_id(&self, id: &ServiceId) -> AppResult<Option<Service>>;
+
+    async fn find_by_code(&self, code: &str) -> AppResult<Option<Service>>;
     async fn find_all(
         &self,
         filters: &ServiceFilters,
         pagination: &Pagination,
-    ) -> Result<(Vec<Service>, i64), crate::shared::error::Error>;
-    async fn delete(&self, id: &ServiceId) -> Result<bool, crate::shared::error::Error>;
-    async fn exists_by_code(&self, code: &str) -> Result<bool, crate::shared::error::Error>;
-    async fn count_by_status(
-        &self,
-        status: ServiceStatus,
-    ) -> Result<i64, crate::shared::error::Error>;
+    ) -> AppResult<(Vec<Service>, i64)>;
+
+    async fn delete(&self, id: &ServiceId) -> AppResult<bool>;
+    async fn exists_by_code(&self, code: &str) -> AppResult<bool>;
+
+    async fn count_by_status(&self, status: ServiceStatus) -> AppResult<i64>;
 }
 
 #[derive(Debug, Clone, Default)]

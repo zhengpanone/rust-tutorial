@@ -1,30 +1,21 @@
 use crate::app::state::AppState;
-use crate::infrastructure::web::dto::auth::request::{LoginRequest, RegisterRequest};
-use crate::infrastructure::web::dto::auth::response::{LoginResponse, RegisterResponse};
+use crate::infrastructure::web::dto::auth::request::{
+    LoginRequest, RefreshTokenRequest, RegisterRequest,
+};
+use crate::infrastructure::web::dto::auth::response::{
+    AuthUserResponse, LoginResponse, RegisterResponse,
+};
 use axum::Json;
 use axum::extract::{Path, State};
 use common::error::{AppError, AppResult};
+use common::security::jwt::claim::{JwtSession, JwtUser};
 use common::web::response::ApiResponse;
 use std::sync::Arc;
-use tracing::{error, info, instrument};
+use tracing::{debug, error, info, instrument};
 use utoipa::OpenApi;
 use validator::Validate;
 
 const TAG_NAME: &str = "Auth API";
-
-
-// pub async fn register_user(
-//     State(state): State<Arc<AppState>>,
-//     Json(register_request): Json<RegisterDTO>,
-// ) -> Result<Json<UserVO>, StatusCode> {
-//     let user_service = UserService::new(state.clone());
-//     let resp = user_service
-//         .create_user(&register_request)
-//         .await
-//         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-//     let vo = UserVO::try_from(resp).map_err(|_| StatusCode::NOT_FOUND)?;
-//     Ok(Json(vo))
-// }
 
 /// 用户注册
 #[utoipa::path(
@@ -120,17 +111,134 @@ pub async fn login(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<LoginRequest>,
 ) -> AppResult<ApiResponse<LoginResponse>> {
-    info!("用户登陆尝试: {}", payload.identifier);
+    info!("用户登陆尝试: {}", &payload.identifier);
     // 验证请求
     payload
         .validate()
         .map_err(|e| AppError::Validation(e.to_string()))?;
     // 检查登陆尝试次数
-    todo!()
+
+    let user = state
+        .auth_service
+        .authenticate_user(payload.identifier, payload.password)
+        .await?;
+
+    // 创建会话
+    let session = JwtSession {
+        id: Default::default(),
+        device_info: None,
+        is_first_login: false,
+        login_time: Default::default(),
+        last_activity: Default::default(),
+        metadata: Default::default(),
+    };
+
+    let jwt_user = JwtUser {
+        id: "".to_string(),
+        username: "".to_string(),
+        email: "".to_string(),
+        display_name: "".to_string(),
+        roles: Default::default(),
+        permissions: Default::default(),
+        status: Default::default(),
+        email_verified: false,
+        phone_verified: false,
+        metadata: Default::default(),
+    };
+    // 生成访问令牌
+    let (access_token, access_claims) = state
+        .jwt_service
+        .generate_access_token(jwt_user, session.clone())
+        .await?;
+
+    let (refresh_token, refresh_claims) = state
+        .jwt_service
+        .generate_refresh_token(user.id.to_string(), session)
+        .await?;
+    let response = LoginResponse {
+        access_token,
+        refresh_token,
+        token_type: "".to_string(),
+        expires_in: 0,
+        user: AuthUserResponse {
+            id: Default::default(),
+            username: "".to_string(),
+            email: "".to_string(),
+            display_name: "".to_string(),
+            avatar_url: None,
+            phone: None,
+            roles: vec![],
+            permissions: vec![],
+            email_verified: false,
+            phone_verified: false,
+            status: Default::default(),
+            last_login_at: None,
+            created_at: Default::default(),
+            updated_at: Default::default(),
+            metadata: None,
+        },
+        requires_mfa: false,
+        mfa_type: None,
+        session_id: Default::default(),
+        issued_at: Default::default(),
+        expires_at: Default::default(),
+        is_first_login: false,
+    };
+    Ok(ApiResponse::success(response))
 }
 
-pub async fn refresh_token() {
-    todo!()
+/// 刷新令牌
+#[utoipa::path(
+    post,
+    path = "/refresh",
+    request_body = RefreshTokenRequest,
+    responses(
+        (status = 200, description = "刷新成功", body = LoginResponse),
+        (status = 400, description = "请求参数错误"),
+        (status = 401, description = "无效的刷新令牌")
+    )
+)]
+#[instrument(name = "http_refresh_token", skip_all)]
+pub async fn refresh_token(
+    State(state): State<AppState>,
+    Json(payload): Json<RefreshTokenRequest>,
+) -> AppResult<ApiResponse<LoginResponse>> {
+    payload
+        .validate()
+        .map_err(|e| AppError::Validation(e.to_string()))?;
+    debug!("Token refresh attempt");
+
+    let new_session = JwtSession {
+        id: Default::default(),
+        device_info: None,
+        is_first_login: false,
+        login_time: Default::default(),
+        last_activity: Default::default(),
+        metadata: Default::default(),
+    };
+
+    let (new_access_token, new_claims) = state
+        .auth_service
+        .refresh_token(&payload.refresh_token, new_session)
+        .await?;
+
+    let user = state.auth_service.get_user(&new_claims.sub).await?;
+
+    let response = LoginResponse {
+        access_token: "".to_string(),
+        refresh_token: "".to_string(),
+        token_type: "".to_string(),
+        expires_in: 0,
+        user: user.into(),
+        requires_mfa: false,
+        mfa_type: None,
+        session_id: Default::default(),
+        issued_at: Default::default(),
+        expires_at: Default::default(),
+        is_first_login: false,
+    };
+
+    Ok(ApiResponse::success(response))
 }
 
 pub async fn forgot_password() {
@@ -209,7 +317,7 @@ pub async fn update_current_user() {
 
 #[derive(OpenApi)]
 #[openapi(
-    paths(register,logout,force_logout),
+    paths(register,login, logout,force_logout),
     tags((name = "Auth API", description = "Auth management"))
 )]
 pub struct AuthApiDoc;

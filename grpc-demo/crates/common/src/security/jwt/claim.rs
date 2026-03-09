@@ -1,7 +1,7 @@
 pub use crate::enums::user::UserStatus;
 use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::Validate;
@@ -72,9 +72,9 @@ pub struct JwtUser {
     /// 用户显示名
     pub display_name: String,
     /// 用户角色
-    pub roles: Vec<String>,
+    pub roles: HashSet<String>,
     /// 权限列表
-    pub permissions: Vec<String>,
+    pub permissions: HashSet<String>,
     /// 用户状态
     pub status: UserStatus,
     /// 用户邮箱是否已验证
@@ -183,9 +183,9 @@ impl JwtClaim {
                 id: user_id.clone(),
                 username: "".to_string(),
                 email: "".to_string(),
-                roles: vec![],
+                roles: HashSet::new(),
                 display_name: "".to_string(),
-                permissions: vec![],
+                permissions: HashSet::new(),
                 status: UserStatus::Activate,
                 email_verified: false,
                 phone_verified: false,

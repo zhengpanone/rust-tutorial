@@ -1,13 +1,11 @@
+use crate::domain::services::models::service::Service;
+use crate::domain::services::value_objects::ServiceType;
+use crate::domain::services::value_objects::{ServiceStatus};
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::Validate;
-
-use crate::{
-    enums::service_enums::{ServiceStatus, ServiceType},
-    models::service::Service,
-};
 
 #[derive(Debug, Serialize, Deserialize, Validate, ToSchema)]
 pub struct CreateServiceDTO {
@@ -78,20 +76,22 @@ impl From<CreateServiceDTO> for Service {
     fn from(request: CreateServiceDTO) -> Self {
         let now = Utc::now();
         let id = Uuid::new_v4().to_string();
-
-        Service {
-            id,
-            service_code: request.service_code,
-            service_name: request.service_name,
-            service_type: request.service_type,
-            service_desc: request.service_desc,
-            owner_team: request.owner_team,
-            base_url: request.base_url,
-            status: request.status,
-            health_endpoint: request.health_endpoint,
-            is_internal: request.is_internal,
-            created_at: now,
-            updated_at: now,
-        }
+        todo!()
+        // Service {
+        //     id,
+        //     service_code: request.service_code,
+        //     service_name: request.service_name,
+        //     service_type: request.service_type,
+        //     owner_team: request.owner_team,
+        //     base_url: request.base_url.map(|url| Url::parse(url).unwrap()),
+        //     status: request.status,
+        //     health_endpoint: request.health_endpoint,
+        //     is_internal: request.is_internal,
+        //     modules_count: 0,
+        //     apis_count: 0,
+        //     created_at: now,
+        //     updated_at: now,
+        //     description: None
+        // }
     }
 }

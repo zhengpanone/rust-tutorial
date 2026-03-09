@@ -22,7 +22,7 @@ use crate::infrastructure::web::dto::user::request::{
 use proto::common::CommonId;
 use tonic::codegen::tokio_stream::wrappers::ReceiverStream;
 use tonic::{Request, Response, Status, Streaming};
-use tracing::{info, warn};
+use tracing::{info};
 
 fn now_timestamp() -> Timestamp {
     let duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();

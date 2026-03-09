@@ -1,4 +1,5 @@
 // src/app/bootstrap/server/http.rs
+
 use crate::api::http::v1::v1_routes;
 use crate::app::config::server::ServerConfig;
 use crate::app::middleware::http::cors::cors_middleware;
@@ -15,7 +16,8 @@ use common::error::{AppError, AppResult};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
-use tracing::info;
+use tokio::signal;
+use tracing::{info, warn};
 use utoipa::OpenApi;
 use utoipa_rapidoc::RapiDoc;
 use utoipa_redoc::{Redoc, Servable};
@@ -43,9 +45,50 @@ pub async fn start_http_server(state: AppState, server_config: &ServerConfig) ->
     })?;
 
     axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown_signal())
         .await
         .map_err(|e| AppError::Internal(format!("HTTP server failed: {}", e)))?;
     Ok(())
+}
+
+/// 捕获系统信号，触发优雅关闭
+async fn shutdown_signal() {
+    info!("🔌 Waiting for shutdown signal (Ctrl+C or SIGTERM)...");
+    // Ctrl+C 信号（跨平台支持）
+    let ctrl_c = async {
+        signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+        info!("🧹 Received Ctrl+C");
+    };
+    // Unix 平台支持 SIGTERM
+    #[cfg(unix)]
+    let terminate = async {
+        // signal::unix::signal(signal::unix::SignalKind::terminate())
+        // 	.expect("failed to install signal handler")
+        // 	.recv()
+        // 	.await;
+        match signal::unix::signal(signal::unix::SignalKind::terminate()) {
+            Ok(mut term) => {
+                term.recv().await;
+                info!("🧹 Received SIGTERM");
+            }
+            Err(e) => {
+                warn!("⚠️ Failed to install SIGTERM handler: {e}");
+            }
+        }
+    };
+    // Windows 不支持 SIGTERM，pending 替代
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    // 等待任意信号触发
+    tokio::select! {
+        _=ctrl_c=>{},
+        _=terminate=>{},
+    }
+
+    info!("🚦 Shutdown signal received, starting graceful shutdown...");
 }
 
 /// 添加全局中间件

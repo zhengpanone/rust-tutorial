@@ -5,15 +5,16 @@ use crate::infrastructure::web::dto::auth::request::{LoginRequest, RegisterReque
 use crate::infrastructure::web::dto::auth::response::SessionInfoResponse;
 use async_trait::async_trait;
 use common::error::AppError;
-use common::security::jwt::claim::JwtSession;
+use common::security::jwt::claim::{JwtClaim, JwtSession};
 use deadpool_redis::Pool as RedisPool;
 use std::sync::Arc;
+use crate::app::bootstrap::server::jwt::JwtService;
 
 /// 认证应用服务实现
 #[derive(Clone)]
 pub struct AuthServiceImpl {
     user_repository: Arc<dyn UserRepository + Send + Sync>,
-    // jwt_service: Arc<JwtService>,
+    jwt_service: Arc<JwtService>,
     redis_pool: Option<Arc<RedisPool>>,
 }
 
@@ -21,12 +22,12 @@ impl AuthServiceImpl {
     /// 创建新的认证应用服务
     pub fn new(
         user_repository: Arc<dyn UserRepository + Send + Sync>,
-        // jwt_service: Arc<JwtService>,
+        jwt_service: Arc<JwtService>,
         redis_pool: Option<Arc<RedisPool>>,
     ) -> Self {
         Self {
             user_repository,
-            // jwt_service,
+            jwt_service,
             redis_pool,
         }
     }
@@ -121,6 +122,12 @@ impl AuthService for AuthServiceImpl {
         user: &User,
         request: &LoginRequest,
     ) -> Result<JwtSession, AppError> {
+        todo!()
+    }
+
+    /// 刷新令牌
+    async fn refresh_token(&self, refresh_token: &str, new_session: JwtSession) -> Result<(String, JwtClaim), AppError> {
+
         todo!()
     }
 

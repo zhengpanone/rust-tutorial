@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 mod auth;
 mod user;
+mod service;
 
 /// 为路由添加前缀的辅助函数
 pub fn prefix_routes<B: Clone + Send + Sync + 'static>(

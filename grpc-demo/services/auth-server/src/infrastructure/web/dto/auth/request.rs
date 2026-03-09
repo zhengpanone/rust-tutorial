@@ -1,3 +1,5 @@
+// src/infrastructure/web/dto/auth/requests.rs
+
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -6,7 +8,6 @@ use utoipa::ToSchema;
 use validator::{Validate, ValidationError};
 use validator_ext::must_be_true_validator;
 
-// src/infrastructure/web/dto/auth/requests.rs
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
 pub struct LoginRequest {
     /// 用户标识符(用户名、邮箱或手机号)
@@ -68,6 +69,7 @@ pub struct LoginRequest {
     #[serde(default = "default_login_method")]
     pub login_method: LoginMethod,
 }
+
 /// 注册请求
 #[must_be_true_validator]
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
@@ -145,6 +147,120 @@ pub struct RegisterRequest {
     /// 元数据
     #[serde(skip_serializing_if = "Option::is_none")]
     pub metadata: Option<serde_json::Value>,
+}
+
+/// 刷新令牌请求
+#[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
+pub struct RefreshTokenRequest {
+    /// 刷新令牌
+    #[validate(
+        length(min = 1, max = 1000, message = "刷新令牌不能为空"),
+        custom(function = "validate_token_format")
+    )]
+    pub refresh_token: String,
+
+    /// 设备ID
+    #[validate(length(max = 100, message = "设备ID长度不能超过100个字符"))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub device_id: Option<String>,
+
+    /// 设备类型
+    #[validate(length(max = 50, message = "设备类型长度不能超过50个字符"))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub device_type: Option<String>,
+
+    /// 用户代理
+    #[validate(length(max = 500, message = "用户代理长度不能超过500个字符"))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub user_agent: Option<String>,
+
+    /// IP地址
+    #[validate(length(max = 45, message = "IP地址长度不能超过45个字符"))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ip_address: Option<String>,
+}
+
+/// 忘记密码请求
+#[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
+pub struct ForgotPasswordRequest {
+    /// 邮箱
+    #[validate(
+        length(max = 100, message = "邮箱长度不能超过100个字符"),
+        email(message = "邮箱格式不正确")
+    )]
+    pub email: String,
+
+    /// 验证码
+    #[validate(length(max = 10, message = "验证码长度不能超过10个字符"))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub captcha: Option<String>,
+
+    /// 验证码ID
+    #[validate(length(max = 100, message = "验证码ID长度不能超过100个字符"))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub captcha_id: Option<String>,
+}
+
+/// 重置密码请求
+#[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
+pub struct ResetPasswordRequest {
+    /// 重置令牌
+    #[validate(
+        length(min = 1, max = 1000, message = "重置令牌不能为空"),
+        custom(function = "validate_token_format")
+    )]
+    pub token: String,
+
+    /// 新密码
+    #[validate(
+        length(min = 8, max = 128, message = "密码长度必须在8-128个字符之间"),
+        custom(function = "validate_password_strength")
+    )]
+    pub new_password: String,
+
+    /// 确认密码
+    #[validate(must_match(other = "new_password", message = "两次输入的密码不一致"))]
+    pub confirm_password: String,
+}
+
+/// 验证邮箱请求
+#[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
+pub struct VerifyEmailRequest {
+    /// 验证令牌
+    #[validate(
+        length(min = 1, max = 1000, message = "验证令牌不能为空"),
+        custom(function = "validate_token_format")
+    )]
+    pub token: String,
+
+    /// 邮箱
+    #[validate(
+        length(max = 100, message = "邮箱长度不能超过100个字符"),
+        email(message = "邮箱格式不正确")
+    )]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub email: Option<String>,
+}
+
+/// 重新发送验证邮件请求
+#[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
+pub struct ResendVerificationRequest {
+    /// 邮箱
+    #[validate(
+        length(max = 100, message = "邮箱长度不能超过100个字符"),
+        email(message = "邮箱格式不正确")
+    )]
+    pub email: String,
+
+    /// 验证码
+    #[validate(length(max = 10, message = "验证码长度不能超过10个字符"))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub captcha: Option<String>,
+
+    /// 验证码ID
+    #[validate(length(max = 100, message = "验证码ID长度不能超过100个字符"))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub captcha_id: Option<String>,
 }
 
 /// 登录方式
@@ -308,6 +424,23 @@ pub fn validate_password_strength(password: &str) -> Result<(), ValidationError>
             ValidationError::new("sequence password").with_message(Cow::from("密码包含连续字符"))
         );
     }
+    Ok(())
+}
+
+fn validate_token_format(token: &str) -> Result<(), ValidationError> {
+    if token.trim().is_empty() {
+        return Err(
+            ValidationError::new("token_cannot_be_empty").with_message(Cow::from("令牌不能为空"))
+        );
+    }
+
+    // 基本格式检查
+    if token.len() < 10 || token.len() > 1000 {
+        return Err(
+            ValidationError::new("invalid_token_length").with_message(Cow::from("令牌长度不正确"))
+        );
+    }
+
     Ok(())
 }
 

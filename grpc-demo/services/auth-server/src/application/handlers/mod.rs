@@ -1,10 +1,10 @@
 use utoipa::OpenApi;
-use utoipa::openapi::SecurityRequirement;
 use utoipa::openapi::security::{HttpAuthScheme, SecurityScheme};
 
 pub mod auth_handler;
 pub mod health_handler;
 pub mod metrics_handler;
+pub mod service_handler;
 pub mod user_handler;
 
 /// 主 API 文档
@@ -27,6 +27,7 @@ pub mod user_handler;
         //     (path = "/roles", api = role_handler::RoleApiDoc),
     (path = "/auth", api = auth_handler::AuthApiDoc),
     (path = "/user", api = user_handler::UserApiDoc),
+    (path = "/admin/user", api = user_handler::AdminUserApiDoc),
     ),
     // 服务器配置
     servers(

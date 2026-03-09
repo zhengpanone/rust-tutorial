@@ -5,6 +5,7 @@ use crate::application::services::auth_service::AuthService;
 use crate::application::services::impls::auth_service_impl::AuthServiceImpl;
 use crate::application::services::impls::user_service_impl::UserServiceImpl;
 
+use crate::app::bootstrap::server::jwt::init_jwt_service;
 use common::error::AppResult;
 use std::sync::Arc;
 
@@ -43,18 +44,20 @@ pub struct AppServices {
 
 impl AppServices {
     pub async fn new(
-        _config: &AppConfig,
+        config: &AppConfig,
         _app_state: Arc<AppState>,
         infrastructure_services: Arc<InfrastructureServices>,
     ) -> AppResult<Self> {
         // 1. 获取基础设施适配器
         let user_repository = infrastructure_services.get_user_repository();
         // 2. 创建领域服务工厂
+        let jwt_service = init_jwt_service(&config.security, &infrastructure_services).await?;
 
         // 3. 初始化应用服务
         let _user_service = Arc::new(UserServiceImpl::new(user_repository.clone()));
         let auth_service = Arc::new(AuthServiceImpl::new(
             user_repository.clone(),
+            jwt_service.clone(),
             infrastructure_services.redis_pool.clone(),
         ));
         Ok(Self {
