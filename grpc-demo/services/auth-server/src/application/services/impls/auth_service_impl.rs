@@ -8,7 +8,9 @@ use common::error::AppError;
 use common::security::jwt::claim::{JwtClaim, JwtSession};
 use deadpool_redis::Pool as RedisPool;
 use std::sync::Arc;
+use uuid::Uuid;
 use crate::app::bootstrap::server::jwt::JwtService;
+use crate::domain::identity::events::auth_events::UserLoggedOut;
 
 /// 认证应用服务实现
 #[derive(Clone)]
@@ -140,6 +142,26 @@ impl AuthService for AuthServiceImpl {
     }
 
     async fn send_password_reset_email(&self, email: &str, token: &str) -> Result<(), AppError> {
+        todo!()
+    }
+
+    async fn logout(&self, session_id: Option<Uuid>) -> Result<(bool, Vec<UserLoggedOut>), AppError> {
+        // let revoked = self.auth_session_repository.revoke(session_id).await?;
+        //
+        // if revoked {
+        //     let event = UserLoggedOut {
+        //         session_id: session_id.to_string(),
+        //         occurred_at: Utc::now(),
+        //     };
+        //     Ok((true, vec![event]))
+        // } else {
+        //     Ok((false, vec![]))
+        // }
+
+        // 记录登出
+
+            // self.record_logout(&auth_user.user_id, &auth_user.session_id)
+            // .await?;
         todo!()
     }
 }

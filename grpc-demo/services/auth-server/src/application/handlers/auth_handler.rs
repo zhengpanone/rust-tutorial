@@ -1,7 +1,7 @@
+use crate::app::config::features::RuleCondition::UserId;
 use crate::app::state::AppState;
-use crate::infrastructure::web::dto::auth::request::{
-    LoginRequest, RefreshTokenRequest, RegisterRequest,
-};
+use crate::domain::shared::auth::user::AuthUser;
+use crate::infrastructure::web::dto::auth::request::{ForgotPasswordRequest, LoginRequest, RefreshTokenRequest, RegisterRequest, ResetPasswordRequest};
 use crate::infrastructure::web::dto::auth::response::{
     AuthUserResponse, LoginResponse, RegisterResponse,
 };
@@ -10,6 +10,7 @@ use axum::extract::{Path, State};
 use common::error::{AppError, AppResult};
 use common::security::jwt::claim::{JwtSession, JwtUser};
 use common::web::response::ApiResponse;
+use sqlx::encode::IsNull::No;
 use std::sync::Arc;
 use tracing::{debug, error, info, instrument};
 use utoipa::OpenApi;
@@ -241,12 +242,85 @@ pub async fn refresh_token(
     Ok(ApiResponse::success(response))
 }
 
-pub async fn forgot_password() {
+/// 忘记密码
+#[utoipa::path(
+    post,
+    path = "/api/v1/auth/forgot-password",
+    request_body = ForgotPasswordRequest,
+    responses(
+        (status = 200, description = "密码重置邮件已发送"),
+        (status = 400, description = "请求参数错误"),
+    )
+)]
+#[instrument(name = "http_forgot_password", skip_all, fields(identifier = %request.identifier))]
+pub async fn forgot_password(
+    State(state): State<Arc<AppState>>,
+    Json(request): Json<ForgotPasswordRequest>,
+) -> AppResult<ApiResponse<LoginResponse>> {
+    request.validate().map_err(|e| AppError::Validation(e.to_string()))?;
+
+    debug!("Forgot password for identifier: {}", request.identifier);
+
+    // 构建请求
+    let forgot_password_request = ForgotPasswordRequest {
+        email: "".to_string(),
+        identifier: request.identifier,
+        reset_url: request.reset_url,
+        expires_in_minutes: request.expires_in_minutes,
+        captcha: None,
+        client_id: None,
+        captcha_id: None,
+    };
+
+    // 调用认证服务
+    // state.auth_service
+    //     .forgot_password(forgot_password_request)
+    //     .await?;
+
+    // Ok(ApiResponse::success_with_message("密码重置链接已发送到您的邮箱"))
     todo!()
 }
 
-pub async fn reset_password() {
-    todo!()
+/// 重置密码
+#[utoipa::path(
+    post,
+    path = "/api/v1/auth/reset-password",
+    request_body = ResetPasswordRequest,
+    responses(
+        (status = 204, description = "密码重置成功"),
+        (status = 400, description = "请求参数错误或令牌无效"),
+    )
+)]
+#[instrument(name = "http_reset_password", skip_all)]
+pub async fn reset_password(State(state): State<Arc<AppState>>,
+                            Json(request): Json<ResetPasswordRequest>,
+) -> AppResult<ApiResponse> {
+    request.validate().map_err(|e| AppError::Validation(e.to_string()))?;
+
+    debug!("Reset password attempt");
+
+    // 检查密码匹配
+    if request.new_password != request.confirm_password {
+        return Err(AppError::Validation("新密码不匹配".to_string()));
+    }
+
+    // 构建请求
+    let reset_password_request = ResetPasswordRequest {
+        token: request.token,
+        new_password: request.new_password,
+        confirm_password: request.confirm_password,
+        // client_id: None,
+        // verification_code: request.verification_code,
+    };
+
+    // 调用认证服务
+    // state.auth_service
+    //     .reset_password(reset_password_request,"")
+    //     .await?;
+
+    info!("Password reset successfully");
+
+    Ok(ApiResponse::success_empty("密码重置成功"))
 }
 
 pub async fn verify_email() {
@@ -266,9 +340,16 @@ pub async fn resend_verification() {}
     ),
     security(("bearer_auth" =[]))
 )]
-#[instrument(name = "http_logout", skip(_state))]
-pub async fn logout(State(_state): State<Arc<AppState>>) -> ApiResponse<()> {
+#[instrument(name = "http_logout", skip_all, fields(user_id = %auth_user.user_id))]
+pub async fn logout(State(state): State<Arc<AppState>>, auth_user: AuthUser) -> ApiResponse<()> {
     info!("退出成功");
+
+    state
+        .auth_service
+        .logout(auth_user.token_id)
+        .await
+        .expect("TODO: panic message");
+
     ApiResponse::success_empty("退出成功")
 }
 

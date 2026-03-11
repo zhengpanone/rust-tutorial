@@ -190,6 +190,14 @@ pub struct ForgotPasswordRequest {
     )]
     pub email: String,
 
+    pub identifier: String,
+
+    pub client_id: Option<String>,
+
+    pub reset_url: Option<String>,
+
+    pub expires_in_minutes: Option<u32>,
+
     /// 验证码
     #[validate(length(max = 10, message = "验证码长度不能超过10个字符"))]
     #[serde(skip_serializing_if = "Option::is_none")]

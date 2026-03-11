@@ -4,8 +4,10 @@ use crate::domain::identity::entity::user::User;
 use crate::infrastructure::web::dto::auth::request::{LoginRequest, RegisterRequest};
 use crate::infrastructure::web::dto::auth::response::SessionInfoResponse;
 use async_trait::async_trait;
+use uuid::Uuid;
 use common::error::AppError;
 use common::security::jwt::claim::{JwtClaim, JwtSession};
+use crate::domain::identity::events::auth_events::UserLoggedOut;
 
 /// 认证应用服务 trait
 #[async_trait]
@@ -91,4 +93,9 @@ pub trait AuthService: Send + Sync {
 
     /// 发送密码重置邮件
     async fn send_password_reset_email(&self, email: &str, token: &str) -> Result<(), AppError>;
+
+     async fn logout(
+         &self,
+         session_id: Option<Uuid>,
+    ) -> Result<(bool, Vec<UserLoggedOut>), AppError>;
 }
