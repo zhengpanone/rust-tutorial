@@ -1,28 +1,16 @@
+use auth_client::router::create_router;
+use auth_client::state::AppState;
 use metrics::{counter, gauge, histogram};
 use metrics_exporter_prometheus::PrometheusBuilder;
-use std::net::SocketAddr;
-use std::sync::Arc;
-use std::time::Duration;
-use tokio::time::{Instant, interval, sleep};
-use tracing::{debug, error, info};
-
-mod client;
-mod error;
-mod interceptor;
-mod state;
-
-mod domain;
-mod handler;
-mod router;
-mod middleware;
-mod config;
-
-use crate::router::create_router;
-use crate::state::AppState;
 use proto::user::GetUserRequest;
 use proto::user::user_service_grpc_client::UserServiceGrpcClient;
 use rand::random;
+use std::net::SocketAddr;
+use std::sync::Arc;
+use std::time::Duration;
 use tokio::net::TcpListener;
+use tokio::time::{Instant, interval, sleep};
+use tracing::{debug, error, info};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -32,7 +20,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::DEBUG)
         .init();
-
 
     info!("Starting user service client HTTP API with Prometheus metrics...");
     // 获取配置
@@ -121,7 +108,10 @@ async fn main1() -> Result<(), Box<dyn std::error::Error>> {
     let listen_addr: SocketAddr = format!("0.0.0.0:{}", port)
         .parse()
         .expect("Failed to parse listen address");
-    info!("📊 Prometheus metrics available at handler://{}", listen_addr);
+    info!(
+        "📊 Prometheus metrics available at handler://{}",
+        listen_addr
+    );
 
     // 安装 recorder
     let builder = builder
@@ -183,7 +173,9 @@ async fn main1() -> Result<(), Box<dyn std::error::Error>> {
         gauge!("user_client_requests_in_progress", "endpoint" => "get_user").increment(1.0);
 
         let request = tonic::Request::new(GetUserRequest {
-            id: i.to_string(), // 使用不同的 ID
+            include_sensitive: false,
+            fields: vec![],
+            identifier: None,
         });
 
         debug!("Sending request #{}, ID: {}", i + 1, i);

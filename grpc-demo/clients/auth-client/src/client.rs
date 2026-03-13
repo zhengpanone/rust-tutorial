@@ -74,7 +74,11 @@ impl UserClient {
 
         loop {
             attempt += 1;
-            let request = GetUserRequest { id: id.clone() };
+            let request = GetUserRequest {
+                include_sensitive: false,
+                fields: vec![],
+                identifier: None,
+            };
             // Tracing span
             // 用了 #[instrument]，就不需要再手动创建 span 了。
             // let span = tracing::info_span!("get_user", user_id = %request.id);
@@ -186,10 +190,10 @@ impl UserClientBuilder {
         // 构建 Channel
         let channel = ep.connect().await?;
         // 拦截器
-        let interceptor = self.interceptor.unwrap_or_else(||{
-            if self.enable_tracing{
+        let interceptor = self.interceptor.unwrap_or_else(|| {
+            if self.enable_tracing {
                 ClientInterceptor::with_tracing()
-            }else{
+            } else {
                 ClientInterceptor::new()
             }
         });
@@ -237,7 +241,9 @@ mod test {
             .expect("user grpc service not found");
 
         let request = tonic::Request::new(GetUserRequest {
-            id: "1".to_string(),
+            include_sensitive: false,
+            fields: vec![],
+            identifier: None,
         });
         let response = client.get_user(request).await.expect("User not found!");
 

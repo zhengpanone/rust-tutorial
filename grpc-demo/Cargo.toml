@@ -4,7 +4,7 @@ resolver = "2"
 members = [
     "proto",
     "services/auth-server",
-#    "clients/auth-client",
+    "clients/auth-client",
     "crates/common",
     "crates/validator-ext",
 ]
