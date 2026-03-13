@@ -36,7 +36,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .expect("Failed to parse listen address");
 
     // 初始化应用状态
-    let app_state = Arc::new(AppState::new());
+    let app_state = Arc::new(AppState::new().await);
 
     info!("Prometheus metrics available at handler://{}", metrics_addr);
 

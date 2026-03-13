@@ -21,6 +21,7 @@ pub fn create_router(app_state: Arc<AppState>) -> Router {
         .route("/metrics/api_handler", get(api_handler))
         .route("/", get(root_handler))
         .route("/api/v1/stats", get(get_stats))
+        .merge(user_router::user_public_routes())
         .layer(middleware::from_fn(charset_utf8_middleware))
         .layer(middleware::from_fn_with_state(
             Arc::clone(&app_state),
@@ -28,7 +29,7 @@ pub fn create_router(app_state: Arc<AppState>) -> Router {
         ))
         // .layer(middleware::from_fn(logging_middleware))
         // .layer(middleware::from_fn(auth_middleware))
-        .with_state(Arc::clone(&app_state))
+        .with_state( Arc::clone(&app_state))
 }
 
 async fn root_handler() -> impl IntoResponse {

@@ -1,4 +1,3 @@
-use std::sync::Arc;
 use crate::domain::response::common::ApiResponse;
 use axum::Json;
 use axum::extract::{Path, State};
@@ -6,17 +5,22 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use chrono::Utc;
 use metrics::{counter, gauge, histogram};
+use std::sync::Arc;
 
+use crate::state::AppState;
+use proto::user::UserResponse;
 use std::time::Duration;
 use tokio::time::{Instant, sleep};
 use tracing::{info, warn};
-use proto::user::UserResponse;
-use crate::state::AppState;
 
 // 获取用户信息
-pub async fn get_user(State(state): State<Arc<AppState>>, Path(user_id): Path<String>) -> impl IntoResponse {
+pub async fn get_user(
+    State(state): State<Arc<AppState>>,
+    Path(user_id): Path<String>,
+) -> impl IntoResponse {
     let start_time = Instant::now();
 
+    let mut user_client = state.user_client.lock().await;
     info!("📥 GET /api/v1/users/{}", user_id);
 
     // 记录请求
@@ -25,12 +29,21 @@ pub async fn get_user(State(state): State<Arc<AppState>>, Path(user_id): Path<St
 
     gauge!("user_service_requests_in_progress",
 "endpoint" => "/api/v1/users/{id}")
-        .increment(1.0);
+    .increment(1.0);
 
     // 模拟处理延迟
     let delay_ms: u64 = rand::random::<u64>() % 200;
     sleep(Duration::from_millis(delay_ms)).await;
 
+    let user = user_client
+        .get_user("1".to_string())
+        .await
+        .expect("get_user response failed");
+
+    info!(
+        "user name = {}",
+        user.user.ok_or("user not found").unwrap().username
+    );
     // 模拟成功率
     let success = rand::random::<f32>() > 0.1; // 90% 成功率
 

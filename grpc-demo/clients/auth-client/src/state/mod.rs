@@ -1,6 +1,8 @@
+use crate::client::UserClient;
 use prometheus::{Counter, CounterVec, Gauge, Histogram, HistogramOpts, Registry, opts};
-use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc};
+use tokio::sync::Mutex;
 use tokio::time::Instant;
 
 // 自定义指标结构
@@ -65,22 +67,25 @@ pub struct AppState {
     pub request_counter: Arc<AtomicUsize>,
     pub error_counter: Arc<AtomicUsize>,
     pub startup_time: Instant,
+    pub user_client: Arc<Mutex<UserClient>>,
 }
 
 impl AppState {
-    pub fn new() -> Self {
+    pub async fn new() -> Self {
         Self {
             metrics: Metrics::new(),
             request_counter: Arc::new(AtomicUsize::new(0)),
             error_counter: Arc::new(AtomicUsize::new(0)),
             startup_time: Instant::now(),
+            user_client: Arc::new(Mutex::new(
+                UserClient::connect("http://127.0.0.1:50051").await.unwrap(),
+            )),
         }
     }
 
     pub fn get_uptime(&self) -> u64 {
         self.startup_time.elapsed().as_secs()
     }
-
 
     pub fn get_request_count(&self) -> usize {
         self.request_counter.load(Ordering::Relaxed)
