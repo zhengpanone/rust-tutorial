@@ -1,4 +1,4 @@
-use crate::domain::identity::entity::user::UserId;
+
 use chrono::{DateTime, Utc};
 use common::enums::user::UserStatus;
 use common::security::jwt::claim::{DeviceInfo, JwtClaim};

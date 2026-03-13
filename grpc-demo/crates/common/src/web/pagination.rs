@@ -115,7 +115,7 @@ pub struct PaginationInfo {
     pub links: Option<PaginationLinks>,
 }
 
-/// 分页查询参数
+/// 分页参数
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct PaginationParams {
@@ -133,7 +133,7 @@ pub struct PaginationParams {
 
     /// 排序方向
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub sort_direction: Option<SortDirection>,
+    pub sort_order: Option<SortOrder>,
 
     /// 搜索关键字
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -157,7 +157,7 @@ impl Default for PaginationParams {
             page: default_page(),
             page_size: default_page_size(),
             sort_by: None,
-            sort_direction: None,
+            sort_order: Some(SortOrder::Asc),
             search: None,
             filters: None,
         }
@@ -198,9 +198,9 @@ impl PaginationParams {
     }
 
     /// 设置排序
-    pub fn with_sort(mut self, sort_by: &str, direction: SortDirection) -> Self {
+    pub fn with_sort(mut self, sort_by: &str, sort_order: SortOrder) -> Self {
         self.sort_by = Some(sort_by.to_string());
-        self.sort_direction = Some(direction);
+        self.sort_order = Some(sort_order);
         self
     }
 
@@ -219,24 +219,24 @@ impl PaginationParams {
 
 /// 排序方向
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
-pub enum SortDirection {
+pub enum SortOrder {
     #[serde(rename = "asc")]
     Asc,
     #[serde(rename = "desc")]
     Desc,
 }
 
-impl Default for SortDirection {
+impl Default for SortOrder {
     fn default() -> Self {
         Self::Desc
     }
 }
 
-impl std::fmt::Display for SortDirection {
+impl std::fmt::Display for SortOrder {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            SortDirection::Asc => write!(f, "asc"),
-            SortDirection::Desc => write!(f, "desc"),
+            SortOrder::Asc => write!(f, "asc"),
+            SortOrder::Desc => write!(f, "desc"),
         }
     }
 }

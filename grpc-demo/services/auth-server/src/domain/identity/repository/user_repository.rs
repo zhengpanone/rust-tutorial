@@ -2,8 +2,10 @@
 
 use crate::domain::identity::entity::user::User;
 use crate::domain::identity::{Email, Username};
+use crate::infrastructure::web::dto::user::request::UserFilter;
 use async_trait::async_trait;
 use common::error::AppResult;
+use common::web::pagination::PaginationParams;
 use uuid::Uuid;
 
 /// 用户仓储 trait
@@ -31,4 +33,13 @@ pub trait UserRepository: Send + Sync {
     async fn exists_by_phone(&self, phone: &str) -> AppResult<bool>;
 
     async fn save(&self, user: User) -> AppResult<User>;
+
+    /// 获取所有用户
+    async fn find_all(
+        &self,
+        filter: &UserFilter,
+        pagination: &PaginationParams,
+    ) -> AppResult<Vec<User>>;
+
+    async fn count(&self, filter: &UserFilter) -> AppResult<u64>;
 }

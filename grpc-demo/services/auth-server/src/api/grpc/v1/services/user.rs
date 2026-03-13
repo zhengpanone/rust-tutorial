@@ -1,28 +1,35 @@
 // api/grpc/v1/user_row
 
-use prost_types::Timestamp;
-use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH};
-
+use super::interceptor::GrpcContext;
 use crate::app::state::AppState;
 use crate::application::services::user_service::UserService;
+use metrics::{counter, histogram};
+use prost_types::Timestamp;
 use proto::user::user_service_grpc_server::UserServiceGrpc;
 use proto::user::{
     AssignPermissionRequest, AssignRoleRequest, BatchCreateUsersResponse, CreateUserRequest,
     DeleteUserRequest, DeleteUserResponse, DisableUserRequest, EnableUserRequest, GetUserRequest,
     GetUserStatsRequest, GetUsersRequest, GetUsersResponse, ListUserRequest, LockUserRequest,
-    RemovePermissionRequest, RemoveRoleRequest, SearchUsersRequest, SearchUsersResponse,
-    StreamUsersRequest, UnlockUserRequest, UpdateUserRequest, User, UserOperation, UserResponse,
-    UserRole, UserStatsResponse, VerifyEmailRequest, VerifyPhoneRequest,
+    RemovePermissionRequest, RemoveRoleRequest, SearchUsersRequest as ProtoSearchUsersRequest,
+    SearchUsersRequest, SearchUsersResponse as ProtoSearchUsersResponse, StreamUsersRequest,
+    UnlockUserRequest, UpdateUserRequest, User, UserOperation, UserResponse, UserRole,
+    UserStatsResponse, VerifyEmailRequest, VerifyPhoneRequest,
 };
+use std::sync::Arc;
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
+use crate::api::grpc::v1::converter::user_converter::UserConverter;
 use crate::infrastructure::web::dto::user::request::{
     CreateUserRequest as DomainCreateUserRequest, UpdateUserRequest as DomainUpdateUserRequest,
+    UserFilter,
 };
-use proto::common::CommonId;
+use common::web::pagination::{PaginationInfo, PaginationParams};
+use proto::common::{
+    CommonId, PageRequest as ProtoPageRequest, PageResponse as ProtoPageResponse, PageResponse,
+};
 use tonic::codegen::tokio_stream::wrappers::ReceiverStream;
 use tonic::{Request, Response, Status, Streaming};
-use tracing::{info};
+use tracing::{debug, info, instrument};
 
 fn now_timestamp() -> Timestamp {
     let duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
@@ -33,23 +40,60 @@ fn now_timestamp() -> Timestamp {
     }
 }
 
-pub fn grpc_user_service(state: Arc<AppState>) -> GrpcUserService {
-    GrpcUserService::new(state.user_service.clone())
+pub fn grpc_user_service(state: Arc<AppState>) -> UserGrpcService {
+    UserGrpcService::new(state.user_service.clone())
 }
 
-// gRPC adapter
-pub struct GrpcUserService {
-    service: Arc<dyn UserService>,
+// 用户gRPC服务 gRPC adapter
+pub struct UserGrpcService {
+    user_service: Arc<dyn UserService>,
 }
 
-impl GrpcUserService {
-    pub fn new(service: Arc<dyn UserService>) -> Self {
-        Self { service }
+impl UserGrpcService {
+    pub fn new(user_service: Arc<dyn UserService>) -> Self {
+        Self { user_service }
+    }
+
+    /// 记录指标
+    fn record_metrics(&self, method: &str, success: bool, duration_ms: f64) {
+        let success_str = if success {
+            "true".to_string()
+        } else {
+            "false".to_string()
+        };
+        counter!("grpc_requests_total","method" => method.to_string(), "success" => success_str)
+            .increment(1);
+        histogram!("grpc_request_duration_ms", "method" => method.to_string()).record(duration_ms);
+
+        if !success {
+            counter!("grpc_errors_total", "method" => method.to_string()).increment(1);
+        }
+    }
+
+    /// 转换为领域分页
+    fn convert_pagination(&self, request: &ProtoPageRequest) -> PaginationParams {
+        PaginationParams {
+            page: request.page,
+            page_size: request.page_size,
+            sort_by: None,
+            sort_order: None,
+            search: None,
+            filters: None,
+        }
+    }
+
+    /// 获取gRPC上下文
+    fn get_grpc_context<T>(&self, request: &Request<T>) -> Result<GrpcContext, Status> {
+        request
+            .extensions()
+            .get::<GrpcContext>()
+            .cloned()
+            .ok_or_else(|| Status::unauthenticated("Missing authentication context"))
     }
 }
 
 #[tonic::async_trait]
-impl UserServiceGrpc for GrpcUserService {
+impl UserServiceGrpc for UserGrpcService {
     async fn create_user(
         &self,
         request: Request<CreateUserRequest>,
@@ -62,7 +106,7 @@ impl UserServiceGrpc for GrpcUserService {
         let domain_req: DomainCreateUserRequest = (&req).into();
 
         let user = self
-            .service
+            .user_service
             .create_user(domain_req)
             .await
             .map_err(|err| err.to_tonic_status())?;
@@ -78,7 +122,7 @@ impl UserServiceGrpc for GrpcUserService {
         &self,
         request: Request<GetUserRequest>,
     ) -> Result<Response<UserResponse>, Status> {
-        let req = request.into_inner();
+        let _req = request.into_inner();
         Ok(tonic::Response::new(UserResponse {
             user: Some(User {
                 id: "1".to_string(),
@@ -105,7 +149,7 @@ impl UserServiceGrpc for GrpcUserService {
         let user_id = request.into_inner().id;
         info!(target: "user_grpc", "GetUserById request received from {:?}", user_id);
         let user_opt = self
-            .service
+            .user_service
             .get_user(&user_id)
             .await
             .map_err(|err| err.to_tonic_status())?;
@@ -193,7 +237,8 @@ impl UserServiceGrpc for GrpcUserService {
         let domain_req: DomainUpdateUserRequest = (&req).into();
         let user_id = req.user_id.as_str();
 
-       let user =  self.service
+        let _user = self
+            .user_service
             .update_user(user_id, domain_req)
             .await
             .map_err(|err| err.to_tonic_status())?;
@@ -209,7 +254,7 @@ impl UserServiceGrpc for GrpcUserService {
         &self,
         request: Request<DeleteUserRequest>,
     ) -> Result<Response<DeleteUserResponse>, Status> {
-        let user_id = request.into_inner().user_id;
+        let _user_id = request.into_inner().user_id;
 
         Ok(Response::new(DeleteUserResponse {
             success: false,
@@ -217,11 +262,59 @@ impl UserServiceGrpc for GrpcUserService {
         }))
     }
 
+    #[instrument(name = "grpc_search_users", skip_all)]
     async fn search_users(
         &self,
-        request: Request<SearchUsersRequest>,
-    ) -> Result<Response<SearchUsersResponse>, Status> {
-        todo!()
+        request: Request<ProtoSearchUsersRequest>,
+    ) -> Result<Response<ProtoSearchUsersResponse>, Status> {
+        let start_time = Instant::now();
+        debug!(
+            "Searching users via gRPC, request received from {:?}",
+            request
+        );
+        let ctx = self.get_grpc_context(&request);
+        let request_data = request.into_inner();
+        // 转换分页
+        let pagination = if let Some(req_page) = request_data.pagination {
+            self.convert_pagination(&req_page)
+        } else {
+            PaginationParams::default()
+        };
+        // 构建 UserFilter
+        let filter = UserFilter {
+            status: None,
+            role: None,
+            email_verified: None,
+            phone_verified: None,
+            created_after: None,
+            created_before: None,
+            search: Some(request_data.query),
+        };
+
+        // 调用应用服务
+        let user_service = self.user_service.clone();
+        let result = user_service.list_users(filter, pagination).await;
+        // 转换为gRPC响应
+        let result = result.map_err(|err| err.to_tonic_status())?;
+        let response = ProtoSearchUsersResponse {
+            users: result
+                .items
+                .into_iter()
+                .map(|user| UserConverter::to_proto(&user))
+                .collect(),
+            pagination: Some(ProtoPageResponse {
+                page: result.page,
+                page_size: result.page_size,
+                total: result.total,
+                total_pages: result.total_pages,
+                has_next: result.has_next,
+                has_previous: result.has_previous,
+            }),
+            total_hits: 0,
+            response: None,
+        };
+
+        Ok(Response::new(response))
     }
 
     async fn get_user_stats(

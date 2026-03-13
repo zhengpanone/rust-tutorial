@@ -1,19 +1,18 @@
 use crate::application::services::user_service::UserService;
 use crate::domain::identity::entity::user::User;
 use crate::domain::identity::repository::user_repository::UserRepository;
-use common::security::password::hash_password;
 use crate::infrastructure::web::dto::auth::request::validate_password_strength;
-use crate::infrastructure::web::dto::user::request;
 use crate::infrastructure::web::dto::user::request::{
     CreateUserRequest, UpdateUserRequest, UserFilter,
 };
 use crate::infrastructure::web::dto::user::response::UserResponse;
 use async_trait::async_trait;
 use common::error::{AppError, AppResult};
-use common::web::pagination::PaginatedData;
+use common::security::password::hash_password;
+use common::web::pagination::{PaginatedData, PaginationParams, SortOrder};
 use common::web::response::Pagination;
 use std::sync::Arc;
-use tracing::{error, info};
+use tracing::{debug, error, info};
 use uuid::Uuid;
 use validator::Validate;
 
@@ -147,9 +146,58 @@ impl UserService for UserServiceImpl {
     async fn list_users(
         &self,
         filter: UserFilter,
-        pagination: Pagination,
+        pagination: PaginationParams,
     ) -> Result<PaginatedData<Vec<User>>, AppError> {
-        todo!()
+        debug!("Listing users with filter: {:?}", filter);
+
+        let (offset, limit, sort_by, sort_order) =
+            self.handle_pagination(&filter, &pagination).await;
+
+        // 获取用户列表
+        let users = self.user_repository.find_all(&filter, &pagination).await?;
+
+        // 获取总数
+        let total = self.user_repository.count(&filter).await?;
+
+        let total_pages = (total as f64 / limit as f64).ceil() as u64;
+        let has_next = pagination.page < total_pages;
+        let has_previous = pagination.page > 1;
+
+        Ok(PaginatedData {
+            items: users,
+            total: total as u64,
+            page: pagination.page,
+            page_size: pagination.page_size,
+            total_pages,
+            has_next,
+            previous_page: None,
+            has_previous,
+            next_page: None,
+        })
+    }
+
+    /// 处理分页
+    async fn handle_pagination(
+        &self,
+        filter: &UserFilter,
+        pagination: &PaginationParams,
+    ) -> (i64, i64, String, String) {
+        let page = pagination.page.max(1) as i64;
+        let page_size = pagination.page_size.clamp(1, 100) as i64;
+        let offset = (page - 1) * page_size;
+
+        let sort_by = pagination
+            .sort_by
+            .clone()
+            .unwrap_or_else(|| "created_at".to_string());
+
+        let sort_order = match pagination.sort_order {
+            Some(SortOrder::Asc) => "ASC",
+            Some(SortOrder::Desc) => "DESC",
+            None => "DESC",
+        };
+
+        (offset, page_size, sort_by, sort_order.to_string())
     }
 
     async fn update_user(

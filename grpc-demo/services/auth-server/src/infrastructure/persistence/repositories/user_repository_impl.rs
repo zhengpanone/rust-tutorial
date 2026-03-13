@@ -7,8 +7,10 @@ use std::sync::Arc;
 use crate::domain::identity::{Email, Username};
 
 use crate::infrastructure::persistence::models::user_row::UserRow;
-use sqlx::PgPool;
-use tracing::{debug, error};
+use crate::infrastructure::web::dto::user::request::UserFilter;
+use common::web::pagination::{PaginationParams, SortOrder};
+use sqlx::{PgPool, Postgres, QueryBuilder};
+use tracing::{debug, error, info};
 use uuid::Uuid;
 
 /// 用户仓储实现
@@ -290,5 +292,139 @@ impl UserRepository for UserRepositoryImpl {
         })?;
 
         Ok(user)
+    }
+
+    /// 获取所有用户
+    async fn find_all(
+        &self,
+        filter: &UserFilter,
+        pagination: &PaginationParams,
+    ) -> AppResult<Vec<User>> {
+        debug!("Finding all users with filter: {:?}", filter);
+
+        // 构建查询
+        let mut query_builder =
+            QueryBuilder::<Postgres>::new("SELECT * FROM sys_user WHERE deleted_at IS NULL");
+
+        // 应用过滤器
+        if let Some(status) = &filter.status {
+            query_builder.push(" AND status = ");
+            query_builder.push_bind(status.to_string());
+        }
+
+        if let Some(email_verified) = filter.email_verified {
+            query_builder.push(" AND email_verified = ");
+            query_builder.push_bind(email_verified);
+        }
+
+        if let Some(created_after) = filter.created_after {
+            query_builder.push(" AND created_at > ");
+            query_builder.push_bind(created_after);
+        }
+
+        if let Some(created_before) = filter.created_before {
+            query_builder.push(" AND created_at < ");
+            query_builder.push_bind(created_before);
+        }
+
+        if let Some(search) = &filter.search {
+            query_builder.push(" AND (username ILIKE ");
+            query_builder.push_bind(format!("%{}%", search));
+            query_builder.push(" OR email ILIKE ");
+            query_builder.push_bind(format!("%{}%", search));
+            query_builder.push(" OR first_name ILIKE ");
+            query_builder.push_bind(format!("%{}%", search));
+            query_builder.push(" OR last_name ILIKE ");
+            query_builder.push_bind(format!("%{}%", search));
+            query_builder.push(")");
+        }
+
+        // 应用排序
+        query_builder.push(" ORDER BY ");
+        // match sort_by {
+        //     UserSortBy::Username => query_builder.push("username"),
+        //     UserSortBy::Email => query_builder.push("email"),
+        //     UserSortBy::FirstName => query_builder.push("first_name"),
+        //     UserSortBy::LastName => query_builder.push("last_name"),
+        //     UserSortBy::CreatedAt => query_builder.push("created_at"),
+        //     UserSortBy::UpdatedAt => query_builder.push("updated_at"),
+        // }
+
+        // match sort_direction {
+        //     SortOrder::Asc => query_builder.push(" ASC"),
+        //     SortOrder::Desc => query_builder.push(" DESC"),
+        // }
+
+        // 应用分页
+        query_builder.push(" LIMIT ");
+        query_builder.push_bind(pagination.page_size as i64);
+        query_builder.push(" OFFSET ");
+        query_builder.push_bind((pagination.page_size * pagination.page - 1) as i64);
+
+        // 查询 UserRow
+        let user_rows = query_builder
+            .build_query_as::<UserRow>()
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| {
+                error!("Database error finding all users: {}", e);
+                AppError::Database(e.to_string())
+            })?;
+
+        // 转换为 User 领域实体
+        let users: Vec<User> = user_rows.into_iter().map(|row| row.to_domain()).collect();
+
+        Ok(users)
+    }
+
+    async fn count(&self, filter: &UserFilter) -> AppResult<u64> {
+        info!("Counting users with filter: {:?}", filter);
+        // 构建查询
+        let mut query_builder =
+            QueryBuilder::<Postgres>::new("SELECT COUNT(*) FROM users WHERE deleted_at IS NULL");
+
+        // 应用过滤器
+        if let Some(status) = &filter.status {
+            query_builder.push(" AND status = ");
+            query_builder.push_bind(status.to_string());
+        }
+
+        if let Some(email_verified) = filter.email_verified {
+            query_builder.push(" AND email_verified = ");
+            query_builder.push_bind(email_verified);
+        }
+
+        if let Some(created_after) = filter.created_after {
+            query_builder.push(" AND created_at > ");
+            query_builder.push_bind(created_after);
+        }
+
+        if let Some(created_before) = filter.created_before {
+            query_builder.push(" AND created_at < ");
+            query_builder.push_bind(created_before);
+        }
+
+        if let Some(search) = &filter.search {
+            query_builder.push(" AND (username ILIKE ");
+            query_builder.push_bind(format!("%{}%", search));
+            query_builder.push(" OR email ILIKE ");
+            query_builder.push_bind(format!("%{}%", search));
+            query_builder.push(" OR first_name ILIKE ");
+            query_builder.push_bind(format!("%{}%", search));
+            query_builder.push(" OR last_name ILIKE ");
+            query_builder.push_bind(format!("%{}%", search));
+            query_builder.push(")");
+        }
+
+        let result = query_builder
+            .build_query_scalar::<i64>()
+            .fetch_one(&self.pool)
+            .await
+            .map_err(|e| {
+                error!("Database error counting users: {}", e);
+                AppError::Database(e.to_string())
+            })?;
+
+        Ok(result as u64)
     }
 }

@@ -1,10 +1,9 @@
 // src/app/bootstrap/server/grpc.rs
 
 use crate::api::grpc::v1::services::hello::{GrpcHelloService, grpc_hello_service};
-use crate::api::grpc::v1::services::user::{GrpcUserService, grpc_user_service};
+use crate::api::grpc::v1::services::user::{UserGrpcService, grpc_user_service};
 use crate::app::config::config::GrpcConfig;
 use crate::app::state::AppState;
-use crate::application::handlers::health_handler::health_check;
 use anyhow::Context;
 use common::error::AppResult;
 use proto::hello::greeter_service_server::GreeterServiceServer;
@@ -32,12 +31,11 @@ pub async fn start_grpc_server(state: AppState, config: &GrpcConfig) -> AppResul
 
     // 标记 UserService 为 SERVING
     health_reporter
-        .set_serving::<UserServiceGrpcServer<GrpcUserService>>()
+        .set_serving::<UserServiceGrpcServer<UserGrpcService>>()
         .await;
     health_reporter
         .set_serving::<GreeterServiceServer<GrpcHelloService>>()
         .await;
-
 
     // Reflection
     let reflection_service = ReflectionBuilder::configure()

@@ -2,7 +2,7 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use url::Url as ExternalUrl;
-use validator::Validate;
+
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Url {

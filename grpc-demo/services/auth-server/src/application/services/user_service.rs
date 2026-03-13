@@ -6,7 +6,7 @@ use crate::infrastructure::web::dto::user::request::{
 };
 use async_trait::async_trait;
 use common::error::{AppError, AppResult};
-use common::web::pagination::PaginatedData;
+use common::web::pagination::{PaginatedData, PaginationParams};
 use common::web::response::Pagination;
 
 /// 用户服务 trait
@@ -24,7 +24,7 @@ pub trait UserService: Send + Sync {
     async fn list_users(
         &self,
         filter: UserFilter,
-        pagination: Pagination,
+        pagination: PaginationParams,
     ) -> Result<PaginatedData<Vec<User>>, AppError>;
 
     async fn update_user(
@@ -39,5 +39,10 @@ pub trait UserService: Send + Sync {
     /// 启用用户
     async fn enabled_user(&self, user_id: &str) -> Result<(), AppError>;
 
-    // TODO
+    async fn handle_pagination(
+        &self,
+        filter: &UserFilter,
+        pagination: &PaginationParams
+    ) -> (i64, i64, String, String);
+
 }

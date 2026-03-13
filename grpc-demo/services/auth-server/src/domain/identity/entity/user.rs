@@ -7,6 +7,7 @@ use chrono::{DateTime, Utc};
 use common::enums::user::UserStatus;
 use common::error::AppError;
 use serde::{Deserialize, Serialize};
+use sqlx::FromRow;
 use uuid::Uuid;
 use validator::Validate;
 

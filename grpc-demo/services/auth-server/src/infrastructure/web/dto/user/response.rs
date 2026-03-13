@@ -1,5 +1,4 @@
 use crate::domain::identity::entity::user::User;
-use crate::domain::shared::id::DomainId;
 use chrono::{DateTime, Utc};
 use common::enums::user::UserStatus;
 use serde::{Deserialize, Serialize};

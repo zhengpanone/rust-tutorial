@@ -2,16 +2,17 @@ use crate::app::bootstrap::InfrastructureServices;
 use crate::app::config::config::SecurityConfig;
 use chrono::Utc;
 use common::error::AppError;
+
 use common::security::jwt::claim::{JwtClaim, JwtSession, JwtUser, UserStatus};
 use deadpool_redis::redis::AsyncCommands;
-use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, encode};
+use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use parking_lot::RwLock;
 use serde_json::json;
 use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
-use tracing::{info, warn};
+use tracing::{debug, error, info, warn};
 
 pub async fn init_jwt_service(
     config: &SecurityConfig,
@@ -144,7 +145,7 @@ pub struct JwtService {
     config: Arc<JwtConfig>,
     redis_client: Option<Arc<deadpool_redis::Pool>>,
     encoding_key: Arc<RwLock<EncodingKey>>,
-    _decoding_key: Arc<RwLock<DecodingKey>>,
+    decoding_key: Arc<RwLock<DecodingKey>>,
 }
 
 impl JwtService {
@@ -216,7 +217,7 @@ impl JwtService {
             config: Arc::new(config),
             redis_client,
             encoding_key: Arc::new(RwLock::new(encoding_key)),
-            _decoding_key: Arc::new(RwLock::new(decoding_key)),
+            decoding_key: Arc::new(RwLock::new(decoding_key)),
         })
     }
 
@@ -293,6 +294,103 @@ impl JwtService {
 
         info!("生成刷新令牌成功: {}", claim.jti.clone());
         Ok((token, claim))
+    }
+
+    /// 验证令牌
+    pub async fn verify_token(&self, token: &str) -> Result<JwtClaim, AppError> {
+        // 创建验证配置
+        let mut validation = Validation::new(self.config.algorithm);
+        validation.set_issuer(&["service-manager"]);
+        validation.set_audience(&["api"]);
+        validation.validate_exp = true;
+        validation.validate_nbf = true;
+
+        // 解码令牌
+        let token_data = decode::<JwtClaim>(token, &self.decoding_key.read(), &validation)
+            .map_err(|e| {
+                error!("令牌解码失败: {}", e);
+                match e.kind() {
+                    jsonwebtoken::errors::ErrorKind::ExpiredSignature => {
+                        AppError::Authentication("令牌已过期".to_string())
+                    }
+                    jsonwebtoken::errors::ErrorKind::InvalidSignature => {
+                        AppError::Authentication("无效的签名".to_string())
+                    }
+                    jsonwebtoken::errors::ErrorKind::InvalidToken => {
+                        AppError::Authentication("无效的令牌".to_string())
+                    }
+                    jsonwebtoken::errors::ErrorKind::InvalidIssuer => {
+                        AppError::Authentication("无效的签发者".to_string())
+                    }
+                    jsonwebtoken::errors::ErrorKind::InvalidAudience => {
+                        AppError::Authentication("无效的受众".to_string())
+                    }
+                    _ => AppError::Authentication(format!("令牌验证失败: {}", e)),
+                }
+            })?;
+
+        let claims = token_data.claims;
+
+        // 检查令牌是否被吊销
+        if self.config.enable_revocation_list {
+            if self.is_token_revoked(claims.jti.clone()).await? {
+                return Err(AppError::Authentication("令牌已被吊销".to_string()));
+            }
+        }
+
+        // 验证声明
+        claims
+            .validate()
+            .map_err(|e| AppError::Authentication(e.to_string()))?;
+
+        debug!("令牌验证成功: {}", claims.jti);
+
+        Ok(claims)
+    }
+
+    /// 验证令牌
+    pub fn verify_token_sync(&self, token: &str) -> Result<JwtClaim, AppError> {
+        // 创建验证配置
+        let mut validation = Validation::new(self.config.algorithm);
+        validation.set_issuer(&["service-manager"]);
+        validation.set_audience(&["api"]);
+        validation.validate_exp = true;
+        validation.validate_nbf = true;
+
+        // 解码令牌
+        let token_data = decode::<JwtClaim>(token, &self.decoding_key.read(), &validation)
+            .map_err(|e| {
+                error!("令牌解码失败: {}", e);
+                match e.kind() {
+                    jsonwebtoken::errors::ErrorKind::ExpiredSignature => {
+                        AppError::Authentication("令牌已过期".to_string())
+                    }
+                    jsonwebtoken::errors::ErrorKind::InvalidSignature => {
+                        AppError::Authentication("无效的签名".to_string())
+                    }
+                    jsonwebtoken::errors::ErrorKind::InvalidToken => {
+                        AppError::Authentication("无效的令牌".to_string())
+                    }
+                    jsonwebtoken::errors::ErrorKind::InvalidIssuer => {
+                        AppError::Authentication("无效的签发者".to_string())
+                    }
+                    jsonwebtoken::errors::ErrorKind::InvalidAudience => {
+                        AppError::Authentication("无效的受众".to_string())
+                    }
+                    _ => AppError::Authentication(format!("令牌验证失败: {}", e)),
+                }
+            })?;
+
+        let claims = token_data.claims;
+
+        // 验证声明
+        claims
+            .validate()
+            .map_err(|e| AppError::Authentication(e.to_string()))?;
+
+        debug!("令牌验证成功: {}", claims.jti);
+
+        Ok(claims)
     }
 
     /// 存储刷新令牌

@@ -6,7 +6,6 @@ use axum::extract::FromRequestParts;
 use axum::http::request::Parts;
 use common::error::AppError;
 use common::security::jwt::claim::JwtClaim;
-use serde::Serialize;
 use tracing::{debug, error};
 
 impl<S> FromRequestParts<S> for AuthUser

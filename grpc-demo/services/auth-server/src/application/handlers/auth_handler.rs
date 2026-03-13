@@ -1,7 +1,8 @@
-use crate::app::config::features::RuleCondition::UserId;
 use crate::app::state::AppState;
 use crate::domain::shared::auth::user::AuthUser;
-use crate::infrastructure::web::dto::auth::request::{ForgotPasswordRequest, LoginRequest, RefreshTokenRequest, RegisterRequest, ResetPasswordRequest};
+use crate::infrastructure::web::dto::auth::request::{
+    ForgotPasswordRequest, LoginRequest, RefreshTokenRequest, RegisterRequest, ResetPasswordRequest,
+};
 use crate::infrastructure::web::dto::auth::response::{
     AuthUserResponse, LoginResponse, RegisterResponse,
 };
@@ -10,7 +11,6 @@ use axum::extract::{Path, State};
 use common::error::{AppError, AppResult};
 use common::security::jwt::claim::{JwtSession, JwtUser};
 use common::web::response::ApiResponse;
-use sqlx::encode::IsNull::No;
 use std::sync::Arc;
 use tracing::{debug, error, info, instrument};
 use utoipa::OpenApi;
@@ -257,7 +257,9 @@ pub async fn forgot_password(
     State(state): State<Arc<AppState>>,
     Json(request): Json<ForgotPasswordRequest>,
 ) -> AppResult<ApiResponse<LoginResponse>> {
-    request.validate().map_err(|e| AppError::Validation(e.to_string()))?;
+    request
+        .validate()
+        .map_err(|e| AppError::Validation(e.to_string()))?;
 
     debug!("Forgot password for identifier: {}", request.identifier);
 
@@ -292,10 +294,13 @@ pub async fn forgot_password(
     )
 )]
 #[instrument(name = "http_reset_password", skip_all)]
-pub async fn reset_password(State(state): State<Arc<AppState>>,
-                            Json(request): Json<ResetPasswordRequest>,
+pub async fn reset_password(
+    State(state): State<Arc<AppState>>,
+    Json(request): Json<ResetPasswordRequest>,
 ) -> AppResult<ApiResponse> {
-    request.validate().map_err(|e| AppError::Validation(e.to_string()))?;
+    request
+        .validate()
+        .map_err(|e| AppError::Validation(e.to_string()))?;
 
     debug!("Reset password attempt");
 

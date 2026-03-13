@@ -1,6 +1,4 @@
 use std::collections::HashSet;
-use std::fmt;
-use std::fmt::{Display, Formatter};
 use thiserror::Error;
 
 /// 认证错误
